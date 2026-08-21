@@ -15,6 +15,10 @@ body {
   padding: 16px;
 }
 
+.pagina-ancha {
+  max-width: 1320px;
+}
+
 .barra {
   display: flex;
   align-items: center;
@@ -168,6 +172,13 @@ button:disabled {
 
 .tabla td.num {
   text-align: right;
+}
+
+.celda-archivo {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge {

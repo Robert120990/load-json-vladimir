@@ -21,11 +21,14 @@ export const ETIQUETAS_ESTADO: Record<EstadoItem, string> = {
 export default function FileRow({ item, estado }: Props) {
   const nombreContraparte = item.nombreContraparte ?? '—';
   const detalle = item.error ?? '';
+  const tituloArchivo = detalle ? `${item.fileName} — ${detalle}` : item.fileName;
 
   return (
     <tr>
       <td>{item.id + 1}</td>
-      <td title={detalle}>{item.fileName}</td>
+      <td className="celda-archivo" title={tituloArchivo}>
+        {item.fileName}
+      </td>
       <td>{item.tipoDte ?? '—'}</td>
       <td>{item.fecha ?? '—'}</td>
       <td>{item.nitContraparte ?? item.nrcContraparte ?? '—'}</td>

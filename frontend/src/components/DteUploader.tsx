@@ -277,7 +277,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
   }
 
   return (
-    <div className="pagina">
+    <div className="pagina pagina-ancha">
       <header className="barra">
         <h1>{titulo}</h1>
         <Link to="/" className="btn-secundario">
@@ -452,7 +452,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
         )}
       </main>
 
-      <footer className="pie-version">Versión v7 · Carga DTE</footer>
+      <footer className="pie-version">Versión v8 · Carga DTE</footer>
 
       {confirmacion === 'cargar' && (
         <ConfirmModal
