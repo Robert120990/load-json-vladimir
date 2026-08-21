@@ -1,0 +1,408 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.pagina {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.barra h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.barra-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contenido {
+  margin-top: 20px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.tarjeta-enlace {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tarjeta-enlace:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.tarjeta-enlace h3 {
+  margin: 0 0 6px;
+}
+
+.nota {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.resumen-guardado {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primario {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.btn-primario:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-secundario {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #374151;
+  text-decoration: none;
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.btn-secundario:hover {
+  background: #f9fafb;
+}
+
+.btn-peligro {
+  background: #ffffff;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.btn-peligro:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.tabla-scroll {
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla th,
+.tabla td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.tabla th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.tabla td.num {
+  text-align: right;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge-pendiente {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.badge-valido {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-duplicado,
+.badge-error_parseo,
+.badge-error_guardar {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-cliente_no_existe,
+.badge-proveedor_no_existe,
+.badge-no_pertenece,
+.badge-sin_sello {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.badge-guardado {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.pie-version {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.zona-arrastre {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 30px 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.zona-arrastre:hover,
+.zona-arrastre-activa {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.resumen-validacion {
+  border-color: #bfdbfe;
+  padding: 12px 14px;
+}
+
+.resumen-validacion h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.resumen-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resumen-item {
+  flex: 1 1 84px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  text-align: center;
+  max-width: 140px;
+}
+
+.resumen-item strong {
+  display: block;
+  font-size: 1rem;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.resumen-item span {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.resumen-valido strong {
+  color: #15803d;
+}
+
+.resumen-duplicado strong,
+.resumen-error strong {
+  color: #b91c1c;
+}
+
+.resumen-contraparte strong,
+.resumen-sin-sello strong,
+.resumen-no-pertenece strong {
+  color: #a16207;
+}
+
+.resumen-guardados strong {
+  color: #1d4ed8;
+}
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-overlay {
+  animation: modal-fade-in 0.18s ease-out;
+}
+
+.modal {
+  animation: modal-pop-in 0.22s ease-out;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 36px 32px;
+}
+
+.login-card h1 {
+  margin-top: 0;
+}
+
+.login-card label {
+  display: block;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.login-card input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.login-card input:focus {
+  outline: 2px solid #93c5fd;
+  border-color: transparent;
+}
+
+.login-card button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.login-card .nota {
+  margin-bottom: 12px;
+}
+
+.lista-empresas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+}
+
+.opcion-empresa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.opcion-empresa:hover {
+  background: #f9fafb;
+}
+
+.opcion-empresa input {
+  margin-top: 3px;
+}
+
+.opcion-empresa strong {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.login-card button + button {
+  margin-top: 8px;
+}
