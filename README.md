@@ -72,3 +72,60 @@ npm run dev        # http://localhost:5173  (proxy /api -> localhost:4000)
 - `npm run dev` — servidor de desarrollo (backend: tsx watch; frontend: vite)
 - `npm run typecheck` — verificación de tipos
 - `npm run build` — compilación de producción (backend → `dist/`, frontend → `dist/`)
+
+## Despliegue con Docker (auto-deploy en push)
+
+El repo incluye `Dockerfile` para backend y frontend, `docker-compose.yml` y un workflow de GitHub Actions (`.github/workflows/deploy.yml`) que hace build + push a GHCR (ghcr.io) + redeploy automático en el VPS con cada push a `main`.
+
+### Setup del VPS (una sola vez)
+
+1. Instalar Docker y el plugin compose en el VPS (Linux).
+2. Crear el directorio y el archivo de entorno:
+
+```bash
+mkdir -p ~/load-json-vladimir
+cd ~/load-json-vladimir
+nano .env
+```
+
+Contenido del `.env` (nunca subirlo al repo):
+
+```
+DB_HOST=<host_mysql>
+DB_PORT=3306
+DB_USER=<usuario>
+DB_PASS=<password>
+DB_NAME=<base>
+JWT_SECRET=<secreto>
+```
+
+3. Descargar el `docker-compose.yml` del repo y hacer el primer despliegue manual:
+
+```bash
+curl -O https://raw.githubusercontent.com/Robert120990/load-json-vladimir/main/docker-compose.yml
+docker compose pull
+docker compose up -d
+```
+
+La app queda en `http://<IP_del_VPS>:5173` (puerto configurable en `docker-compose.yml`). El backend se comunica con el MySQL externo por variables de entorno.
+
+### Secrets de GitHub (para el auto-deploy)
+
+En GitHub → repo → Settings → Secrets and variables → Actions:
+
+- `SSH_HOST` — IP o dominio del VPS
+- `SSH_USER` — usuario SSH
+- `SSH_PRIVATE_KEY` — clave privada SSH (del par que tenga acceso al VPS)
+
+### Flujo
+
+Cada `git push` a `main` dispara: build de las imágenes → push a `ghcr.io/robert120990/load-json-vladimir/{backend,frontend}:latest` → SSH al VPS → `docker compose pull && docker compose up -d`.
+
+### Ejecución local con Docker
+
+```bash
+docker compose build
+docker compose up -d
+# App en http://localhost:5173
+```
+

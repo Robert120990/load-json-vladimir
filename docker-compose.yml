@@ -1,0 +1,20 @@
+services:
+  backend:
+    image: ghcr.io/robert120990/load-json-vladimir/backend:latest
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "4000"
+
+  frontend:
+    image: ghcr.io/robert120990/load-json-vladimir/frontend:latest
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
