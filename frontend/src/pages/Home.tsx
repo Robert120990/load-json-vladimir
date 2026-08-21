@@ -64,7 +64,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="pie-version">Versión v8 · Carga DTE</footer>
+      <footer className="pie-version">Versión v9 · Carga DTE</footer>
     </div>
   );
 }
