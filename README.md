@@ -63,7 +63,7 @@ npm run dev        # http://localhost:5173  (proxy /api -> localhost:4000)
 | `rebajas_y_devoluciones` | `resumen.totalDescu` |
 | `serie` (ventas) | `selloRecibido` del JSON |
 | `id_sucursal` / `cod_sucursal` | `'01'` fijo |
-| `periodo_ano` / `periodo_mes` (compras) | Año/mes de `fecEmi` |
+| `periodo_ano` / `periodo_mes` (compras) | Tabla `periodo_compras` según `cod_emp` de la empresa (si no hay registro, no se habilita la carga) |
 | `cod_punto_venta` (compras) | `emisor.codPuntoVenta` |
 | columnas de importaciones/internaciones, terceros, etc. | `0` |
 

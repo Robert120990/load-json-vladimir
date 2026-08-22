@@ -1,12 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-import { guardar, subirArchivos, validar } from '../api/dte';
+import { guardar, obtenerPeriodo, subirArchivos, validar } from '../api/dte';
 import { obtenerError } from '../api/client';
-import type { DteSummary, EstadoItem, SaveResultado, TipoDte } from '../types';
+import type { DteSummary, EstadoItem, PeriodoCompras, SaveResultado, TipoDte } from '../types';
 import { decodificarArrayBuffer } from '../utils/decodificar';
 import ConfirmModal from './ConfirmModal';
 import FileRow from './FileRow';
+import JsonModal from './JsonModal';
 
 interface ArchivoCargado {
   file: File;
@@ -58,12 +59,35 @@ export default function DteUploader({ tipo, titulo }: Props) {
   const [proceso, setProceso] = useState<Proceso>(null);
   const [resultado, setResultado] = useState<SaveResultado | null>(null);
   const [confirmacion, setConfirmacion] = useState<Confirmacion>(null);
+  const [jsonSeleccionado, setJsonSeleccionado] = useState<{ fileName: string; content: string } | null>(
+    null,
+  );
   const [arrastrando, setArrastrando] = useState(false);
   const [resumen, setResumen] = useState<ResumenEstados | null>(null);
+  const [periodo, setPeriodo] = useState<PeriodoCompras | null>(null);
+  const [periodoCargado, setPeriodoCargado] = useState(false);
 
+  useEffect(() => {
+    if (tipo !== 'compras') return;
+    let activo = true;
+    obtenerPeriodo()
+      .then((p) => {
+        if (activo) setPeriodo(p);
+      })
+      .catch((err) => toast.error(obtenerError(err)))
+      .finally(() => {
+        if (activo) setPeriodoCargado(true);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [tipo]);
+
+  const sinPeriodo = tipo === 'compras' && periodo === null;
+  const uploadHabilitado = tipo !== 'compras' || periodo !== null;
   const hayValidos = items.some((item) => estados[item.id] === 'valido');
   const cantidadValidos = items.filter((item) => estados[item.id] === 'valido').length;
-  const deshabilitado = proceso !== null;
+  const deshabilitado = proceso !== null || (tipo === 'compras' && !periodoCargado);
 
   function calcularResumen(estadosActuales: Record<number, EstadoItem>): ResumenEstados {
     const r = resumenVacio();
@@ -86,6 +110,12 @@ export default function DteUploader({ tipo, titulo }: Props) {
   function manejarCarpeta(lista: FileList | null) {
     if (!lista || lista.length === 0) return;
 
+    if (sinPeriodo) {
+      toast.error('No hay periodo de compras configurado para esta empresa');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
     const archivosJson = Array.from(lista).filter((f) => f.name.toLowerCase().endsWith('.json'));
 
     if (archivosJson.length === 0) {
@@ -101,6 +131,11 @@ export default function DteUploader({ tipo, titulo }: Props) {
   async function manejarSoltar(e: React.DragEvent) {
     e.preventDefault();
     setArrastrando(false);
+
+    if (sinPeriodo) {
+      toast.error('No hay periodo de compras configurado para esta empresa');
+      return;
+    }
 
     try {
       const archivosJson: File[] = [];
@@ -272,8 +307,16 @@ export default function DteUploader({ tipo, titulo }: Props) {
     setEstados({});
     setResultado(null);
     setResumen(null);
+    setJsonSeleccionado(null);
     if (inputRef.current) inputRef.current.value = '';
     toast('Carga descartada');
+  }
+
+  function manejarDobleClic(item: DteSummary) {
+    setJsonSeleccionado({
+      fileName: item.fileName,
+      content: archivos.find((a) => a.file.name === item.fileName)?.content ?? '',
+    });
   }
 
   return (
@@ -293,8 +336,17 @@ export default function DteUploader({ tipo, titulo }: Props) {
               ? 'Se cargarán solo los DTE donde el emisor sea la empresa configurada.'
               : 'Se cargarán solo los DTE donde el receptor sea la empresa configurada.'}
           </p>
+          {tipo === 'compras' && (
+            <div className={`periodo-info ${sinPeriodo ? 'periodo-info-sin' : ''}`}>
+              {periodoCargado
+                ? sinPeriodo
+                  ? 'No hay periodo de compras configurado para esta empresa'
+                  : `Periodo de compras: ${String(periodo?.mes).padStart(2, '0')} / ${periodo?.anio}`
+                : 'Consultando periodo de compras…'}
+            </div>
+          )}
           <div
-            className={`zona-arrastre ${arrastrando ? 'zona-arrastre-activa' : ''}`}
+            className={`zona-arrastre ${arrastrando ? 'zona-arrastre-activa' : ''} ${sinPeriodo ? 'zona-arrastre-deshabilitada' : ''}`}
             onDragOver={(e) => {
               e.preventDefault();
               setArrastrando(true);
@@ -308,7 +360,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
             <button
               className="btn-primario"
               onClick={() => inputRef.current?.click()}
-              disabled={deshabilitado}
+              disabled={deshabilitado || !uploadHabilitado}
             >
               Elegir archivos
             </button>
@@ -443,7 +495,12 @@ export default function DteUploader({ tipo, titulo }: Props) {
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <FileRow key={item.id} item={item} estado={estados[item.id] ?? 'pendiente'} />
+                    <FileRow
+                      key={item.id}
+                      item={item}
+                      estado={estados[item.id] ?? 'pendiente'}
+                      onDobleClic={manejarDobleClic}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -487,6 +544,14 @@ export default function DteUploader({ tipo, titulo }: Props) {
           variante="peligro"
           onConfirmar={ejecutarCancelar}
           onCancelar={() => setConfirmacion(null)}
+        />
+      )}
+
+      {jsonSeleccionado && (
+        <JsonModal
+          fileName={jsonSeleccionado.fileName}
+          content={jsonSeleccionado.content}
+          onCerrar={() => setJsonSeleccionado(null)}
         />
       )}
     </div>

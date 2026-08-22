@@ -246,6 +246,37 @@ button:disabled {
   color: #1d4ed8;
 }
 
+.zona-arrastre-deshabilitada {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.zona-arrastre-deshabilitada:hover {
+  border-color: #d1d5db;
+  background: none;
+  color: #6b7280;
+}
+
+.periodo-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.periodo-info-sin {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
 .resumen-validacion {
   border-color: #bfdbfe;
   padding: 12px 14px;
@@ -314,6 +345,49 @@ button:disabled {
 
 .modal-overlay {
   animation: modal-fade-in 0.18s ease-out;
+}
+
+.json-modal-cabecera {
+  padding: 18px 22px 0;
+}
+
+.json-modal-cabecera h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #111827;
+  word-break: break-all;
+}
+
+.json-modal-cuerpo {
+  padding: 16px 22px 6px;
+  overflow: hidden;
+}
+
+.json-modal-pre {
+  margin: 0;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.json-modal-vacio {
+  margin: 0;
+  padding: 30px 16px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.json-modal-pie {
+  padding: 12px 22px 18px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .modal {

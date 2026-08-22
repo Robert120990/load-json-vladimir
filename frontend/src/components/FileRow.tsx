@@ -3,6 +3,7 @@ import type { DteSummary, EstadoItem } from '../types';
 interface Props {
   item: DteSummary;
   estado: EstadoItem;
+  onDobleClic?: (item: DteSummary) => void;
 }
 
 export const ETIQUETAS_ESTADO: Record<EstadoItem, string> = {
@@ -18,13 +19,17 @@ export const ETIQUETAS_ESTADO: Record<EstadoItem, string> = {
   error_guardar: 'Error al guardar',
 };
 
-export default function FileRow({ item, estado }: Props) {
+export default function FileRow({ item, estado, onDobleClic }: Props) {
   const nombreContraparte = item.nombreContraparte ?? '—';
   const detalle = item.error ?? '';
   const tituloArchivo = detalle ? `${item.fileName} — ${detalle}` : item.fileName;
 
   return (
-    <tr>
+    <tr
+      onDoubleClick={onDobleClic ? () => onDobleClic(item) : undefined}
+      title={onDobleClic ? 'Doble clic para ver el JSON' : undefined}
+      style={onDobleClic ? { cursor: 'pointer' } : undefined}
+    >
       <td>{item.id + 1}</td>
       <td className="celda-archivo" title={tituloArchivo}>
         {item.fileName}

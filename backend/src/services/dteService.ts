@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
 import { pool } from '../config/db';
+import { ApiError } from '../middlewares/error';
 import type { Empresa, UsuarioAutenticado } from '../types/entities';
 import type { DteJson } from '../types/dte';
 
 export type TipoDte = 'ventas' | 'compras';
+
+export interface PeriodoCompras {
+  mes: number;
+  anio: number;
+}
 
 export interface DteSummary {
   id: number;
@@ -204,6 +210,15 @@ export function normalizarFecha(valor: string | null | undefined): string {
   return Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString().slice(0, 10);
 }
 
+export async function getPeriodoCompras(codEmp: number): Promise<PeriodoCompras | null> {
+  const [rows] = await pool.query(
+    'SELECT mes, anio FROM periodo_compras WHERE cod_emp = ? LIMIT 1',
+    [codEmp],
+  );
+  const fila = (rows as Array<{ mes: number; anio: number }>)[0];
+  return fila ? { mes: fila.mes, anio: fila.anio } : null;
+}
+
 export function mapearTipoDocumento(tipoDte: string | undefined, tipo: TipoDte): string {
   const original = tipoDte ?? '';
   const mapa = tipo === 'ventas'
@@ -217,6 +232,7 @@ function mapearFila(
   usuario: UsuarioAutenticado,
   tipo: TipoDte,
   codContraparte: string,
+  periodoCompras: PeriodoCompras | null,
 ): Array<string | number | null> {
   const codEmp = usuario.cod_emp ?? null;
   const fecha = normalizarFecha(dte.identificacion.fecEmi);
@@ -234,9 +250,8 @@ function mapearFila(
     ];
   }
 
-  const periodo = fecha.match(/^(\d{4})-(\d{2})/);
-  const periodoAno = periodo ? Number(periodo[1]) : null;
-  const periodoMes = periodo ? Number(periodo[2]) : null;
+  const periodoAno = periodoCompras?.anio ?? null;
+  const periodoMes = periodoCompras?.mes ?? null;
 
   return [
     codEmp, llave, fecha, tipoDocumento, documento, codContraparte,
@@ -341,6 +356,14 @@ export async function guardarItems(
   try {
     await connection.beginTransaction();
 
+    let periodoCompras: PeriodoCompras | null = null;
+    if (tipo === 'compras') {
+      periodoCompras = await getPeriodoCompras(codEmp);
+      if (!periodoCompras) {
+        throw new ApiError(400, 'No hay periodo de compras configurado para la empresa');
+      }
+    }
+
     const resultados: SaveItemResultado[] = [];
 
     for (const item of items) {
@@ -367,7 +390,7 @@ export async function guardarItems(
           );
         }
 
-        const valores = mapearFila(dte, usuario, tipo, codContraparte);
+        const valores = mapearFila(dte, usuario, tipo, codContraparte, periodoCompras);
         await connection.query(
           `INSERT INTO ${tabla} (${columnas.join(', ')}) VALUES (${placeholders})`,
           valores,

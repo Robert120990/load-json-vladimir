@@ -271,8 +271,8 @@ async function crearIndices(conn, cfg) {
   const prefijo = cfg.tabla === 'clientes' ? 'cli' : 'prov';
   const intentos = [
     `ALTER TABLE ${cfg.tabla} ADD UNIQUE INDEX uq_${prefijo}_cod (${cfg.colCodigo})`,
-    `ALTER TABLE ${cfg.tabla} ADD UNIQUE INDEX uq_${prefijo}_nit ((CASE WHEN TRIM(${cfg.colNit}) IN ('','-') OR REPLACE(REPLACE(TRIM(${cfg.colNit}),'-',''),' ','') = '${NIT_PLACEHOLDER}' THEN NULL ELSE REPLACE(REPLACE(TRIM(${cfg.colNit}),'-',''),' ','') END))`,
-    `ALTER TABLE ${cfg.tabla} ADD UNIQUE INDEX uq_${prefijo}_reg ((CASE WHEN TRIM(${cfg.colRegistro}) IN ('','-') THEN NULL ELSE REPLACE(REPLACE(TRIM(${cfg.colRegistro}),'-',''),' ','') END))`,
+    `ALTER TABLE ${cfg.tabla} ADD UNIQUE INDEX uq_${prefijo}_nit ((CASE WHEN REPLACE(REPLACE(TRIM(${cfg.colNit}),'-',''),' ','') IN ('','${NIT_PLACEHOLDER}') THEN NULL ELSE REPLACE(REPLACE(TRIM(${cfg.colNit}),'-',''),' ','') END))`,
+    `ALTER TABLE ${cfg.tabla} ADD INDEX idx_${prefijo}_reg (${cfg.colRegistro})`,
   ];
   for (const sql of intentos) {
     try {
@@ -368,7 +368,7 @@ async function aplicar(conn, fechaHora) {
     const remapeos = construirRemapeos(grupos, cfg);
     const filasUnificadas = construirFilasUnificadas(grupos, columnas, cfg);
 
-    const transaccion = await conn.getConnection();
+    const transaccion = conn;
     try {
       await transaccion.beginTransaction();
       await reemplazarCatalogo(transaccion, cfg, columnas, filasUnificadas);
@@ -380,8 +380,6 @@ async function aplicar(conn, fechaHora) {
     } catch (err) {
       await transaccion.rollback();
       throw err;
-    } finally {
-      transaccion.release();
     }
 
     await crearIndices(conn, cfg);

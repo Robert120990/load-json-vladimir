@@ -1,5 +1,10 @@
 export type TipoDte = 'ventas' | 'compras';
 
+export interface PeriodoCompras {
+  mes: number;
+  anio: number;
+}
+
 export interface Usuario {
   cod_usu: number;
   nom_usu: string;

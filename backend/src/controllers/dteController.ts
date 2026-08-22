@@ -58,6 +58,15 @@ export const subirArchivos = [
   }),
 ];
 
+export const obtenerPeriodo = asyncHandler(async (req: Request, res: Response) => {
+  const usuario = req.usuario;
+  if (!usuario) throw new ApiError(401, 'Sesión no válida');
+  if (usuario.cod_emp === null) throw new ApiError(400, 'El usuario no tiene cod_emp asignado');
+
+  const periodo = await dteService.getPeriodoCompras(usuario.cod_emp);
+  res.json({ periodo });
+});
+
 export const validar = asyncHandler(async (req: Request, res: Response) => {
   const usuario = req.usuario;
   if (!usuario) throw new ApiError(401, 'Sesión no válida');
