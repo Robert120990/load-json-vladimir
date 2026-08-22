@@ -50,6 +50,7 @@ export interface DteSummary {
   nombreContraparte?: string;
   montoTotal?: number;
   sinSello?: boolean;
+  fueraPeriodo?: boolean;
 }
 
 export interface ValidateItem {
@@ -69,6 +70,7 @@ export type EstadoItem =
   | 'no_pertenece'
   | 'error_parseo'
   | 'sin_sello'
+  | 'fuera_periodo'
   | 'guardado'
   | 'error_guardar';
 

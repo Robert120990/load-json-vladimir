@@ -15,6 +15,7 @@ export const ETIQUETAS_ESTADO: Record<EstadoItem, string> = {
   no_pertenece: 'No pertenece a la empresa',
   error_parseo: 'Error de formato',
   sin_sello: 'Sin sello de recepción',
+  fuera_periodo: 'Fuera de periodo',
   guardado: 'Guardado',
   error_guardar: 'Error al guardar',
 };

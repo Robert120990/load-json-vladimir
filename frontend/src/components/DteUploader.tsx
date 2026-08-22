@@ -31,6 +31,7 @@ interface ResumenEstados {
   noPertenece: number;
   errorFormato: number;
   sinSello: number;
+  fueraPeriodo: number;
   guardado: number;
   errorGuardar: number;
 }
@@ -45,6 +46,7 @@ function resumenVacio(): ResumenEstados {
     noPertenece: 0,
     errorFormato: 0,
     sinSello: 0,
+    fueraPeriodo: 0,
     guardado: 0,
     errorGuardar: 0,
   };
@@ -101,6 +103,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
       else if (estado === 'no_pertenece') r.noPertenece += 1;
       else if (estado === 'error_parseo') r.errorFormato += 1;
       else if (estado === 'sin_sello') r.sinSello += 1;
+      else if (estado === 'fuera_periodo') r.fueraPeriodo += 1;
       else if (estado === 'guardado') r.guardado += 1;
       else if (estado === 'error_guardar') r.errorGuardar += 1;
     }
@@ -208,6 +211,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
           resumenes.map((item) => [
             item.id,
             item.error ? 'error_parseo'
+              : item.fueraPeriodo ? 'fuera_periodo'
               : item.sinSello ? 'sin_sello'
               : item.pertenece ? 'pendiente'
               : 'no_pertenece',
@@ -406,6 +410,12 @@ export default function DteUploader({ tipo, titulo }: Props) {
                 <div className="resumen-item resumen-sin-sello">
                   <strong>{resumen.sinSello}</strong>
                   <span>Sin sello</span>
+                </div>
+              )}
+              {resumen.fueraPeriodo > 0 && (
+                <div className="resumen-item resumen-fuera-periodo">
+                  <strong>{resumen.fueraPeriodo}</strong>
+                  <span>Fuera de periodo</span>
                 </div>
               )}
               {resumen.noPertenece > 0 && (

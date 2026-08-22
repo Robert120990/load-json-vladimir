@@ -25,6 +25,7 @@ export interface DteSummary {
   nombreContraparte?: string;
   montoTotal?: number;
   sinSello?: boolean;
+  fueraPeriodo?: boolean;
 }
 
 export interface ValidateItem {
@@ -210,6 +211,36 @@ export function normalizarFecha(valor: string | null | undefined): string {
   return Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString().slice(0, 10);
 }
 
+export function fechaFueraDePeriodo(
+  fechaNormalizada: string | null | undefined,
+  periodo: PeriodoCompras,
+): string | null {
+  const coincidencia = (fechaNormalizada ?? '').trim().match(/^(\d{4})-(\d{2})-\d{2}$/);
+  if (!coincidencia) {
+    return 'El documento no tiene una fecha de emisión válida';
+  }
+
+  const mesesAtras = 2;
+  const mesBruto = periodo.mes - mesesAtras;
+  const anioMinimo = mesBruto <= 0 ? periodo.anio - 1 : periodo.anio;
+  const mesMinimo = mesBruto <= 0 ? mesBruto + 12 : mesBruto;
+
+  const anioFecha = Number(coincidencia[1]);
+  const mesFecha = Number(coincidencia[2]);
+
+  const antesDelRango =
+    anioFecha < anioMinimo || (anioFecha === anioMinimo && mesFecha < mesMinimo);
+  const despuesDelPeriodo =
+    anioFecha > periodo.anio || (anioFecha === periodo.anio && mesFecha > periodo.mes);
+
+  if (!antesDelRango && !despuesDelPeriodo) return null;
+
+  const rango =
+    `${String(mesMinimo).padStart(2, '0')}/${anioMinimo}` +
+    ` a ${String(periodo.mes).padStart(2, '0')}/${periodo.anio}`;
+  return `La fecha de emisión ${fechaNormalizada} está fuera del rango del periodo de compras (${rango})`;
+}
+
 export async function getPeriodoCompras(codEmp: number): Promise<PeriodoCompras | null> {
   const [rows] = await pool.query(
     'SELECT mes, anio FROM periodo_compras WHERE cod_emp = ? LIMIT 1',
@@ -375,6 +406,13 @@ export async function guardarItems(
         }
         if (!obtenerSelloRecibido(dte)) {
           throw new Error('El documento no incluye sello de recepción');
+        }
+        if (tipo === 'compras' && periodoCompras) {
+          const errorFecha = fechaFueraDePeriodo(
+            normalizarFecha(dte.identificacion.fecEmi),
+            periodoCompras,
+          );
+          if (errorFecha) throw new Error(errorFecha);
         }
         if (await existeDuplicado(tipo, codEmp, obtenerCodigoGeneracion(dte))) {
           throw new Error('El documento ya existe (duplicado)');

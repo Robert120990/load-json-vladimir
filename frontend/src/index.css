@@ -201,7 +201,8 @@ button:disabled {
 
 .badge-duplicado,
 .badge-error_parseo,
-.badge-error_guardar {
+.badge-error_guardar,
+.badge-fuera_periodo {
   background: #fee2e2;
   color: #b91c1c;
 }
@@ -321,6 +322,7 @@ button:disabled {
 }
 
 .resumen-duplicado strong,
+.resumen-fuera-periodo strong,
 .resumen-error strong {
   color: #b91c1c;
 }

@@ -34,6 +34,9 @@ export const subirArchivos = [
     }
 
     const empresa = await companyService.getEmpresaPorCodEmp(usuario.cod_emp);
+    const periodoCompras = tipo === 'compras'
+      ? await dteService.getPeriodoCompras(usuario.cod_emp)
+      : null;
 
     const items: dteService.DteSummary[] = archivos.map((archivo, indice) => {
       try {
@@ -45,7 +48,17 @@ export const subirArchivos = [
             pertenece: false,
           };
         }
-        return dteService.construirResumen(dte, archivo.originalname, indice, tipo);
+        const resumen = dteService.construirResumen(dte, archivo.originalname, indice, tipo);
+        if (tipo === 'compras' && periodoCompras) {
+          return {
+            ...resumen,
+            fueraPeriodo: dteService.fechaFueraDePeriodo(
+              dteService.normalizarFecha(dte.identificacion.fecEmi),
+              periodoCompras,
+            ) !== null,
+          };
+        }
+        return resumen;
       } catch (err) {
         const mensaje = err instanceof SyntaxError
           ? 'El archivo no es un JSON válido'
