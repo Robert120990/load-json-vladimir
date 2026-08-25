@@ -312,8 +312,7 @@ async function obtenerCodContraparte(
   tipo: TipoDte,
   nit: string | null | undefined,
   nrc: string | null | undefined,
-): Promise<string | null> {
-  const nitNormalizado = normalizarIdentificador(nit);
+): Promise<string | null> {  const nitNormalizado = normalizarIdentificador(nit);
   const nrcNormalizado = normalizarIdentificador(nrc);
 
   if (!nitNormalizado && !nrcNormalizado) return null;
@@ -349,6 +348,17 @@ async function evaluarContraparte(
 ): Promise<boolean> {
   if (!nit && !nrc) return true;
   return (await obtenerCodContraparte(tipo, nit, nrc)) !== null;
+}
+
+const NOMBRE_CLIENTE_GENERICO = 'CONSUMIDOR FINAL';
+
+export async function obtenerClienteGenerico(codEmp: number): Promise<string | null> {
+  const [rows] = await pool.query(
+    'SELECT cod_cliente FROM clientes WHERE cod_emp = ? AND UPPER(TRIM(nom_cliente)) = ? LIMIT 1',
+    [codEmp, NOMBRE_CLIENTE_GENERICO],
+  );
+  const fila = (rows as Array<{ cod_cliente: string }>)[0];
+  return fila?.cod_cliente ?? null;
 }
 
 export async function validarItems(
@@ -390,16 +400,6 @@ export async function guardarItems(
 
   const connection = await pool.getConnection();
 
-  const llaves: string[] = [];
-  try {
-    for (let i = 0; i < items.length; i++) {
-      llaves[i] = await obtenerLlave(codEmp);
-    }
-  } catch (err) {
-    connection.release();
-    throw err;
-  }
-
   try {
     await connection.beginTransaction();
 
@@ -412,6 +412,7 @@ export async function guardarItems(
     }
 
     const resultados: SaveItemResultado[] = [];
+    let clienteGenericoCache: string | null | undefined;
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -436,16 +437,29 @@ export async function guardarItems(
         }
 
         const contraparte = obtenerContraparte(dte, tipo);
-        const codContraparte = await obtenerCodContraparte(tipo, contraparte?.nit, contraparte?.nrc);
+        let codContraparte = await obtenerCodContraparte(tipo, contraparte?.nit, contraparte?.nrc);
         if (!codContraparte) {
-          throw new Error(
-            tipo === 'ventas'
-              ? 'El cliente no existe en la tabla clientes'
-              : 'El proveedor no existe en la tabla proveedores',
-          );
+          if (tipo === 'ventas' && !contraparte?.nit && !contraparte?.nrc) {
+            if (clienteGenericoCache === undefined) {
+              clienteGenericoCache = await obtenerClienteGenerico(codEmp);
+            }
+            codContraparte = clienteGenericoCache ?? '';
+            if (!codContraparte) {
+              throw new Error(
+                `Debe crear el cliente ${NOMBRE_CLIENTE_GENERICO} para esta empresa`,
+              );
+            }
+          } else {
+            throw new Error(
+              tipo === 'ventas'
+                ? 'El cliente no existe en la tabla clientes'
+                : 'El proveedor no existe en la tabla proveedores',
+            );
+          }
         }
 
-        const valores = mapearFila(dte, usuario, tipo, codContraparte, periodoCompras, llaves[i]);
+        const llave = await obtenerLlave(codEmp);
+        const valores = mapearFila(dte, usuario, tipo, codContraparte, periodoCompras, llave);
         await connection.query(
           `INSERT INTO ${tabla} (${columnas.join(', ')}) VALUES (${placeholders})`,
           valores,

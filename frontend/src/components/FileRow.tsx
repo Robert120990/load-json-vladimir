@@ -43,7 +43,9 @@ export default function FileRow({ item, estado, onDobleClic }: Props) {
         {item.montoTotal !== undefined ? item.montoTotal.toFixed(2) : '—'}
       </td>
       <td>
-        <span className={`badge badge-${estado}`}>{ETIQUETAS_ESTADO[estado]}</span>
+        <span className={`badge badge-${estado}`} title={detalle || undefined}>
+          {ETIQUETAS_ESTADO[estado]}
+        </span>
       </td>
     </tr>
   );

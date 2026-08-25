@@ -285,11 +285,16 @@ export default function DteUploader({ tipo, titulo }: Props) {
       const res = await guardar(tipo, aGuardar);
 
       setResultado(res);
+      const nuevosItems = [...items];
       const nuevosEstados = { ...estados };
       for (const r of res.resultados) {
-        const item = items.find((i) => i.fileName === r.fileName);
-        if (item) nuevosEstados[item.id] = r.ok ? 'guardado' : 'error_guardar';
+        const indice = items.findIndex((i) => i.fileName === r.fileName);
+        if (indice >= 0) {
+          nuevosItems[indice] = { ...nuevosItems[indice], error: r.ok ? undefined : r.error };
+          nuevosEstados[nuevosItems[indice].id] = r.ok ? 'guardado' : 'error_guardar';
+        }
       }
+      setItems(nuevosItems);
       setEstados(nuevosEstados);
       setResumen(calcularResumen(nuevosEstados));
 
