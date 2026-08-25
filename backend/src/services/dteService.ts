@@ -352,10 +352,10 @@ async function evaluarContraparte(
 
 const NOMBRE_CLIENTE_GENERICO = 'CONSUMIDOR FINAL';
 
-export async function obtenerClienteGenerico(codEmp: number): Promise<string | null> {
+export async function obtenerClienteGenerico(): Promise<string | null> {
   const [rows] = await pool.query(
-    'SELECT cod_cliente FROM clientes WHERE cod_emp = ? AND UPPER(TRIM(nom_cliente)) = ? LIMIT 1',
-    [codEmp, NOMBRE_CLIENTE_GENERICO],
+    'SELECT cod_cliente FROM clientes WHERE UPPER(TRIM(nom_cliente)) = ? LIMIT 1',
+    [NOMBRE_CLIENTE_GENERICO],
   );
   const fila = (rows as Array<{ cod_cliente: string }>)[0];
   return fila?.cod_cliente ?? null;
@@ -441,7 +441,7 @@ export async function guardarItems(
         if (!codContraparte) {
           if (tipo === 'ventas' && !contraparte?.nit && !contraparte?.nrc) {
             if (clienteGenericoCache === undefined) {
-              clienteGenericoCache = await obtenerClienteGenerico(codEmp);
+              clienteGenericoCache = await obtenerClienteGenerico();
             }
             codContraparte = clienteGenericoCache ?? '';
             if (!codContraparte) {
