@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { pool } from '../config/db';
 import { ApiError } from '../middlewares/error';
 import type { Empresa, UsuarioAutenticado } from '../types/entities';
@@ -65,7 +64,7 @@ const VENTAS_COLS = [
   'gravadas_locales', 'gravadas_exportacion', 'ventas_exentas', 'ventas_no_sujetas',
   'cuentas_a_terceros', 'rebajas_y_devoluciones', 'iva_retenido', 'iva_percibido',
   'debito_fiscal', 'debito_fiscal_a_terceros', 'corr_maquina_registradora', 'serie',
-  'id_sucursal',
+  'id_sucursal', 'num_control',
 ];
 
 const COMPRAS_COLS = [
@@ -76,7 +75,7 @@ const COMPRAS_COLS = [
   'iva_percibido', 'retencion_a_terceros', 'compras_a_excluidos',
   'rebajas_y_devoluciones', 'iva_rebajas_y_devoluciones',
   'corr_maquina_registradora', 'periodo_ano', 'periodo_mes', 'cod_sucursal',
-  'cod_punto_venta',
+  'cod_punto_venta', 'num_control',
 ];
 
 const VENTAS_TABLA = 'ventas_iva';
@@ -129,14 +128,21 @@ export function obtenerCodigoGeneracion(dte: DteJson): string {
 }
 
 export function obtenerSelloRecibido(dte: DteJson): string {
-  return buscarValorInsensible(dte, 'selloRecibido', 'selloRecepcion', 'sello')
+  return buscarValorInsensible(dte, 'selloRecibido', 'selloRecepcion', 'sello', 'selloAutenticacion')
     || buscarValorInsensible(
         obtenerSeccion(dte, ...SECCIONES_SOBRE),
         'selloRecibido',
         'selloRecepcion',
         'sello',
+        'selloAutenticacion',
       )
     || '';
+}
+
+export function obtenerNumeroControl(dte: DteJson): string {
+  return dte.identificacion.numeroControl
+    ?? buscarValorInsensible(obtenerSeccion(dte, ...SECCIONES_SOBRE), 'numeroControl')
+    ?? '';
 }
 
 function coincide(a: string | null | undefined, b: string | null | undefined): boolean {
@@ -157,13 +163,11 @@ export function extraerIva(dte: DteJson): number {
   return iva?.valor ?? 0;
 }
 
-function generarLlave(dte: DteJson): string {
-  const base = obtenerCodigoGeneracion(dte).replace(/[^a-zA-Z0-9]/g, '');
-  const origen = base.length >= 20
-    ? base
-    : `${obtenerCodigoGeneracion(dte)}${dte.identificacion.numeroControl ?? ''}${dte.identificacion.fecEmi ?? ''}`;
-  const hash = createHash('sha1').update(origen).digest('hex').toUpperCase();
-  return (base + hash).slice(0, 20).toUpperCase();
+export async function obtenerLlave(codEmp: number): Promise<string> {
+  const [rows] = await pool.query('CALL devolver_correlativo_compra(@out)');
+  const conjuntos = rows as Array<Array<{ corr_compra: number }>>;
+  const correlativo = Number(conjuntos[0]?.[0]?.corr_compra ?? 0);
+  return `${codEmp}WCP${String(correlativo).padStart(7, '0')}`;
 }
 
 function obtenerContraparte(dte: DteJson, tipo: TipoDte) {
@@ -179,8 +183,7 @@ export function construirResumen(dte: DteJson, fileName: string, id: number, tip
     tipoDte: dte.identificacion.tipoDte,
     fecha: dte.identificacion.fecEmi,
     codigoGeneracion: obtenerCodigoGeneracion(dte),
-    numeroControl: dte.identificacion.numeroControl
-      ?? buscarValorInsensible(obtenerSeccion(dte, ...SECCIONES_SOBRE), 'numeroControl'),
+    numeroControl: obtenerNumeroControl(dte),
     nitContraparte: contraparte?.nit,
     nrcContraparte: contraparte?.nrc ?? undefined,
     nombreContraparte: contraparte?.nombre,
@@ -264,13 +267,13 @@ function mapearFila(
   tipo: TipoDte,
   codContraparte: string,
   periodoCompras: PeriodoCompras | null,
+  llave: string,
 ): Array<string | number | null> {
   const codEmp = usuario.cod_emp ?? null;
   const fecha = normalizarFecha(dte.identificacion.fecEmi);
   const tipoDocumento = mapearTipoDocumento(dte.identificacion.tipoDte, tipo);
   const documento = obtenerCodigoGeneracion(dte);
   const resumen = dte.resumen ?? {};
-  const llave = generarLlave(dte);
 
   if (tipo === 'ventas') {
     return [
@@ -278,6 +281,7 @@ function mapearFila(
       resumen.totalGravada ?? 0, 0, resumen.totalExenta ?? 0, resumen.totalNoSuj ?? 0,
       0, resumen.totalDescu ?? 0, resumen.ivaRete1 ?? 0, resumen.ivaPerci1 ?? 0,
       extraerIva(dte), 0, 0, obtenerSelloRecibido(dte), '01',
+      obtenerNumeroControl(dte),
     ];
   }
 
@@ -290,6 +294,7 @@ function mapearFila(
     resumen.totalNoSuj ?? 0, extraerIva(dte), 0, resumen.ivaRete1 ?? 0,
     resumen.ivaPerci1 ?? 0, 0, 0, resumen.totalDescu ?? 0, 0, 0,
     periodoAno, periodoMes, '01', dte.emisor?.codPuntoVenta ?? '',
+    obtenerNumeroControl(dte),
   ];
 }
 
@@ -384,6 +389,17 @@ export async function guardarItems(
   }
 
   const connection = await pool.getConnection();
+
+  const llaves: string[] = [];
+  try {
+    for (let i = 0; i < items.length; i++) {
+      llaves[i] = await obtenerLlave(codEmp);
+    }
+  } catch (err) {
+    connection.release();
+    throw err;
+  }
+
   try {
     await connection.beginTransaction();
 
@@ -397,7 +413,8 @@ export async function guardarItems(
 
     const resultados: SaveItemResultado[] = [];
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       try {
         const dte = parseDte(item.content);
 
@@ -428,7 +445,7 @@ export async function guardarItems(
           );
         }
 
-        const valores = mapearFila(dte, usuario, tipo, codContraparte, periodoCompras);
+        const valores = mapearFila(dte, usuario, tipo, codContraparte, periodoCompras, llaves[i]);
         await connection.query(
           `INSERT INTO ${tabla} (${columnas.join(', ')}) VALUES (${placeholders})`,
           valores,

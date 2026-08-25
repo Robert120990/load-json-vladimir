@@ -52,7 +52,7 @@ npm run dev        # http://localhost:5173  (proxy /api -> localhost:4000)
 
 | Concepto | Fuente en el JSON |
 |---|---|
-| `llave` | Código único generado (20 chars, derivado del `codigoGeneracion`) |
+| `llave` | Código único con formato `{cod_emp}WCP{correlativo}` (correlativo de 7 dígitos del SP `devolver_correlativo_compra`) |
 | `fecha` | `identificacion.fecEmi` |
 | `id_tipo_documento` | `identificacion.tipoDte` |
 | `documento` | `codigoGeneracion` |
