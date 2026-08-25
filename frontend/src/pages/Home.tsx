@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { obtenerEmpresa } from '../api/auth';
 import { obtenerError } from '../api/client';
+import { VERSION_APP } from '../version';
 import type { Empresa, Usuario } from '../types';
 
 export default function Home() {
@@ -64,7 +65,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="pie-version">Versión v9 · Carga DTE</footer>
+      <footer className="pie-version">Versión {VERSION_APP} · Carga DTE</footer>
     </div>
   );
 }

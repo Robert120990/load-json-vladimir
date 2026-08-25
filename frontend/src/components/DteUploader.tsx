@@ -5,6 +5,7 @@ import { guardar, obtenerPeriodo, subirArchivos, validar } from '../api/dte';
 import { obtenerError } from '../api/client';
 import type { DteSummary, EstadoItem, PeriodoCompras, SaveResultado, TipoDte } from '../types';
 import { decodificarArrayBuffer } from '../utils/decodificar';
+import { VERSION_APP } from '../version';
 import ConfirmModal from './ConfirmModal';
 import FileRow from './FileRow';
 import JsonModal from './JsonModal';
@@ -519,7 +520,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
         )}
       </main>
 
-      <footer className="pie-version">Versión v9 · Carga DTE</footer>
+      <footer className="pie-version">Versión {VERSION_APP} · Carga DTE</footer>
 
       {confirmacion === 'cargar' && (
         <ConfirmModal
