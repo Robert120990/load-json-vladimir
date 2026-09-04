@@ -61,7 +61,8 @@ npm run dev        # http://localhost:5173  (proxy /api -> localhost:4000)
 | debito/credito fiscal | Tributo IVA (`codigo: "20"`) en `resumen.tributos` |
 | `iva_retenido` / `iva_percibido` | `resumen.ivaRete1` / `resumen.ivaPerci1` |
 | `rebajas_y_devoluciones` | `resumen.totalDescu` |
-| `serie` (ventas) | `selloRecibido` del JSON |
+| `serie` (ventas) / `sello_recepcion` (compras) | `selloRecibido` del JSON |
+| `num_control` | `identificacion.numeroControl` |
 | `id_sucursal` / `cod_sucursal` | `'01'` fijo |
 | `periodo_ano` / `periodo_mes` (compras) | Tabla `periodo_compras` según `cod_emp` de la empresa (si no hay registro, no se habilita la carga) |
 | `cod_punto_venta` (compras) | `emisor.codPuntoVenta` |

@@ -142,6 +142,7 @@ export interface DteJson {
   selloAutenticacion?: string;
   respuestaHacienda?: RespuestaHacienda;
   responseMH?: RespuestaHacienda;
+  respuestaMH?: RespuestaHacienda;
   fhProcesamiento?: string;
   clasificaMsg?: string;
   codigoMsg?: string;

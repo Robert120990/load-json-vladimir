@@ -75,7 +75,7 @@ const COMPRAS_COLS = [
   'iva_percibido', 'retencion_a_terceros', 'compras_a_excluidos',
   'rebajas_y_devoluciones', 'iva_rebajas_y_devoluciones',
   'corr_maquina_registradora', 'periodo_ano', 'periodo_mes', 'cod_sucursal',
-  'cod_punto_venta', 'num_control',
+  'cod_punto_venta', 'num_control', 'sello_recepcion',
 ];
 
 const VENTAS_TABLA = 'ventas_iva';
@@ -118,7 +118,15 @@ function obtenerSeccion(objeto: object | null | undefined, ...nombresSeccion: st
   return null;
 }
 
-const SECCIONES_SOBRE = ['respuestaHacienda', 'responseMH'];
+const SECCIONES_SOBRE = [
+  'respuestaHacienda',
+  'responseMH',
+  'respuestaMH',
+  'acuseMH',
+  'acuseHacienda',
+  'recepcionMH',
+  'mhResponse',
+];
 
 export function obtenerCodigoGeneracion(dte: DteJson): string {
   return buscarValorInsensible(dte, 'codigoGeneracion')
@@ -128,15 +136,30 @@ export function obtenerCodigoGeneracion(dte: DteJson): string {
 }
 
 export function obtenerSelloRecibido(dte: DteJson): string {
-  return buscarValorInsensible(dte, 'selloRecibido', 'selloRecepcion', 'sello', 'selloAutenticacion')
+  const directo = buscarValorInsensible(dte, 'selloRecibido', 'selloRecepcion', 'sello', 'selloAutenticacion')
     || buscarValorInsensible(
         obtenerSeccion(dte, ...SECCIONES_SOBRE),
         'selloRecibido',
         'selloRecepcion',
         'sello',
         'selloAutenticacion',
-      )
-    || '';
+      );
+  if (directo) return directo;
+
+  for (const valor of Object.values(dte)) {
+    if (valor && typeof valor === 'object' && !Array.isArray(valor)) {
+      const encontrado = buscarValorInsensible(
+        valor as object,
+        'selloRecibido',
+        'selloRecepcion',
+        'sello',
+        'selloAutenticacion',
+      );
+      if (encontrado) return encontrado;
+    }
+  }
+
+  return '';
 }
 
 export function obtenerNumeroControl(dte: DteJson): string {
@@ -295,6 +318,7 @@ function mapearFila(
     resumen.ivaPerci1 ?? 0, 0, 0, resumen.totalDescu ?? 0, 0, 0,
     periodoAno, periodoMes, '01', dte.emisor?.codPuntoVenta ?? '',
     obtenerNumeroControl(dte),
+    obtenerSelloRecibido(dte),
   ];
 }
 
