@@ -4,11 +4,16 @@ import * as catalogController from '../controllers/accountingCatalogController';
 import * as journalController from '../controllers/journalEntryController';
 import * as signaturesController from '../controllers/accountingSignaturesController';
 import * as correlativesController from '../controllers/accountingCorrelativesController';
+import * as reportsController from '../controllers/accountingReportsController';
 
 const router = Router();
 
 // Apply authentication middleware
 router.use(authMiddleware);
+
+// --- MAYORIZACIÓN & REPORTES CONTABLES ---
+router.post('/mayorizar', reportsController.mayorizarCuentas);
+router.post('/reportes/data', reportsController.generarReporteContable);
 
 // --- ACCOUNTING CORRELATIVES (correlativos_contabilidad & correlativos) ---
 router.get('/correlativos', correlativesController.getAccountingCorrelatives);

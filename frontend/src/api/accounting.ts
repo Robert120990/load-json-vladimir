@@ -12,6 +12,8 @@ import {
   CorrelativoContabilidad,
   ReenumerarParams,
   ReenumerarResponse,
+  GenerarReporteParams,
+  ReporteContableResponse,
 } from '../types/accounting';
 
 // --- CATÁLOGO DE CUENTAS ---
@@ -189,4 +191,29 @@ export async function reenumerarPartidas(params: ReenumerarParams): Promise<Reen
   const { data } = await api.post<ReenumerarResponse>('/accounting/correlativos/reenumerar', params);
   return data;
 }
+
+// --- MAYORIZACIÓN Y REPORTES CONTABLES ---
+
+export interface MayorizacionResponse {
+  success: boolean;
+  message: string;
+  ejercicio: number;
+  totalCuentas: number;
+  totalPartidasProcesadas: number;
+  totalCargos: number;
+  totalAbonos: number;
+}
+
+export async function ejecutarMayorizacion(ano: number): Promise<MayorizacionResponse> {
+  const { data } = await api.post<MayorizacionResponse>('/accounting/mayorizar', { ano });
+  return data;
+}
+
+export async function obtenerDatosReporteContable(
+  params: GenerarReporteParams
+): Promise<ReporteContableResponse> {
+  const { data } = await api.post<ReporteContableResponse>('/accounting/reportes/data', params);
+  return data;
+}
+
 

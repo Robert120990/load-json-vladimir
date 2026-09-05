@@ -12,6 +12,7 @@ import CatalogoCuentasPage from './pages/contabilidad/CatalogoCuentasPage';
 import PartidasContablesPage from './pages/contabilidad/PartidasContablesPage';
 import FirmasContablesPage from './pages/contabilidad/FirmasContablesPage';
 import CorrelativosContablesPage from './pages/contabilidad/CorrelativosContablesPage';
+import ReportesContablesPage from './pages/contabilidad/ReportesContablesPage';
 import Login from './pages/Login';
 import VentasPage from './pages/VentasPage';
 
@@ -92,6 +93,14 @@ export default function App() {
           element={
             <RequireAuth>
               <FirmasContablesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/contabilidad/reportes"
+          element={
+            <RequireAuth>
+              <ReportesContablesPage />
             </RequireAuth>
           }
         />

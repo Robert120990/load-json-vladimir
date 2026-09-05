@@ -149,3 +149,37 @@ export interface ReenumerarResponse {
   }>;
 }
 
+export interface GenerarReporteParams {
+  reportId: string;
+  ano?: number;
+  mes?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  cuenta_desde?: string;
+  cuenta_hasta?: string;
+  nivel_max?: number;
+  ano_comparativo?: number;
+  cod_tipo_partida?: string;
+}
+
+export interface ReporteContableResponse {
+  success: boolean;
+  reportId: string;
+  titulo: string;
+  periodoTexto: string;
+  empresa: {
+    cod_emp: number;
+    nom_emp: string;
+    razon_social?: string;
+    nit: string;
+    reg_fiscal: string;
+  };
+  firmas: Array<{
+    id_firma: number;
+    nom_firma: string;
+    puesto: string;
+  }>;
+  data: any;
+}
+
+

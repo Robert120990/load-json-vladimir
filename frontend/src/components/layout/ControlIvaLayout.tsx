@@ -73,6 +73,7 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
         { path: '/contabilidad/catalogo', label: 'Catálogo de Cuentas', icon: FolderTree },
         { path: '/contabilidad/correlativos', label: 'Correlativos', icon: Hash },
         { path: '/contabilidad/firmas', label: 'Firmas Contables', icon: PenTool },
+        { path: '/contabilidad/reportes', label: 'Reportes y Balances', icon: BookOpen },
       ],
     },
     {
@@ -164,12 +165,6 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
         </nav>
 
         <div className="sidebar-footer">
-          {empresa && (
-            <div className="empresa-badge" title={`${empresa.nom_emp || `Empresa #${empresa.cod_emp}`} (NIT: ${empresa.nit})`}>
-              <div className="empresa-nom">{empresa.nom_emp || `Empresa #${empresa.cod_emp}`}</div>
-              <div className="empresa-nit">NIT: {empresa.nit}</div>
-            </div>
-          )}
           <div className="usuario-row">
             <div className="usuario-info">
               <span className="usuario-name">{usuario?.desc_usu ?? usuario?.nom_usu ?? 'Usuario'}</span>
@@ -226,8 +221,12 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
                   ? 'Partidas Contables'
                   : location.pathname.includes('/contabilidad/catalogo')
                   ? 'Catálogo de Cuentas'
+                  : location.pathname.includes('/contabilidad/correlativos')
+                  ? 'Correlativos'
                   : location.pathname.includes('/contabilidad/firmas')
                   ? 'Firmas Contables'
+                  : location.pathname.includes('/contabilidad/reportes')
+                  ? 'Reportes Contables y Balances'
                   : location.pathname.includes('/clientes')
                   ? 'Clientes'
                   : location.pathname.includes('/proveedores')
@@ -249,9 +248,9 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
 
           <div className="topbar-actions">
             {empresa && (
-              <div className="topbar-empresa">
-                <span className="topbar-empresa-label">Empresa:</span>
-                <span className="topbar-empresa-name">{empresa.nom_emp || `cod_emp ${empresa.cod_emp}`}</span>
+              <div className="topbar-empresa-badge" title={`${empresa.nom_emp || `Empresa #${empresa.cod_emp}`} (NIT: ${empresa.nit})`}>
+                <div className="topbar-empresa-nom">{empresa.nom_emp || `Empresa #${empresa.cod_emp}`}</div>
+                <div className="topbar-empresa-nit">NIT: {empresa.nit}</div>
               </div>
             )}
             <button type="button" className="btn-secundario btn-sm" onClick={cerrarSesion}>
