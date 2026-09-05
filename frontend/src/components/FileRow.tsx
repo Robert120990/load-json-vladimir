@@ -31,18 +31,30 @@ export default function FileRow({ item, estado, onDobleClic }: Props) {
       title={onDobleClic ? 'Doble clic para ver el JSON' : undefined}
       style={onDobleClic ? { cursor: 'pointer' } : undefined}
     >
-      <td>{item.id + 1}</td>
-      <td className="celda-archivo" title={tituloArchivo}>
-        {item.fileName}
-      </td>
-      <td>{item.tipoDte ?? '—'}</td>
-      <td>{item.fecha ?? '—'}</td>
-      <td>{item.nitContraparte ?? item.nrcContraparte ?? '—'}</td>
-      <td>{nombreContraparte}</td>
-      <td className="num">
-        {item.montoTotal !== undefined ? item.montoTotal.toFixed(2) : '—'}
+      <td style={{ textAlign: 'center', color: '#64748b' }}>{item.id + 1}</td>
+      <td className="celda-archivo" title={tituloArchivo} style={{ maxWidth: 220 }}>
+        <span className="font-semibold text-primary font-mono text-xs">{item.fileName}</span>
       </td>
       <td>
+        <span className="badge badge-neutral text-xs">
+          {item.tipoDte ?? '—'}
+        </span>
+      </td>
+      <td>
+        <span className="whitespace-nowrap font-medium text-xs">{item.fecha ?? '—'}</span>
+      </td>
+      <td>
+        <span className="font-mono text-xs">{item.nitContraparte ?? item.nrcContraparte ?? '—'}</span>
+      </td>
+      <td>
+        <span className="font-medium text-xs" style={{ maxWidth: 200, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {nombreContraparte}
+        </span>
+      </td>
+      <td style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'monospace' }}>
+        $ {item.montoTotal !== undefined ? item.montoTotal.toFixed(2) : '0.00'}
+      </td>
+      <td style={{ textAlign: 'center' }}>
         <span className={`badge badge-${estado}`} title={detalle || undefined}>
           {ETIQUETAS_ESTADO[estado]}
         </span>

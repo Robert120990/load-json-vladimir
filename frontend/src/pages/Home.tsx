@@ -54,6 +54,11 @@ export default function Home() {
         )}
 
         <div className="tarjetas">
+          <Link to="/control-iva/clientes" className="card tarjeta-enlace tarjeta-destacada">
+            <div className="tarjeta-badge">Módulo Completo</div>
+            <h3>Control IVA</h3>
+            <p>Gestión de Clientes, Proveedores, Compras IVA, Ventas IVA y Reportes de Libros de IVA oficiales.</p>
+          </Link>
           <Link to="/ventas" className="card tarjeta-enlace">
             <h3>Carga de Ventas</h3>
             <p>Cargar JSON de DTE emitidos (ventas_iva) por la empresa.</p>
@@ -65,7 +70,13 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="pie-version">Versión {VERSION_APP} · Carga DTE</footer>
+      <footer className="pie-version">
+        <div className="pie-version-badge">
+          <span className="version-pulse-dot" />
+          <span>Carga DTE</span>
+          <span className="pie-version-pill">{VERSION_APP}</span>
+        </div>
+      </footer>
     </div>
   );
 }

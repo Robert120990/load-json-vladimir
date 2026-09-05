@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { login, seleccionarEmpresa } from '../api/auth';
 import { obtenerError } from '../api/client';
 import type { EmpresaOpcion } from '../types';
+import systemLogo from '../assets/logo.png';
+import { VERSION_APP } from '../version';
+import { handleEnterNavigation } from '../utils/formNavigation';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -38,7 +41,7 @@ export default function Login() {
       const resultado = await seleccionarEmpresa(tokenTemporal, empresaSeleccionada);
       localStorage.setItem('token', resultado.token);
       localStorage.setItem('usuario', JSON.stringify(resultado.usuario));
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       setError(obtenerError(err));
     } finally {
@@ -56,10 +59,18 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="card login-card">
-        <h1>Carga de DTE</h1>
+        <div className="login-header-branding">
+          <img src={systemLogo} alt="Administración Tributaria Logo" className="login-logo-img" />
+          <h1>Administración Tributaria</h1>
+          <div className="login-version-badge">
+            <span className="version-pulse-dot" />
+            <span className="version-badge-label">Módulo Tributario</span>
+            <span className="version-badge-pill">{VERSION_APP}</span>
+          </div>
+        </div>
 
         {empresas.length === 0 ? (
-          <form onSubmit={manejarCredenciales}>
+          <form onSubmit={manejarCredenciales} onKeyDown={handleEnterNavigation}>
             <label>
               Usuario
               <input

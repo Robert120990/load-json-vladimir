@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import {
+  ArrowRight,
+  CheckCircle2,
+  FileCode2,
+  FolderUp,
+  Save,
+  Trash2,
+  UploadCloud,
+} from 'lucide-react';
 import { guardar, obtenerPeriodo, subirArchivos, validar } from '../api/dte';
 import { obtenerError } from '../api/client';
 import type { DteSummary, EstadoItem, PeriodoCompras, SaveResultado, TipoDte } from '../types';
 import { decodificarArrayBuffer } from '../utils/decodificar';
-import { VERSION_APP } from '../version';
 import ConfirmModal from './ConfirmModal';
 import FileRow from './FileRow';
 import JsonModal from './JsonModal';
@@ -143,125 +151,143 @@ export default function DteUploader({ tipo, titulo }: Props) {
 
     try {
       const archivosJson: File[] = [];
-      const items = e.dataTransfer.items;
+      const itemsData = e.dataTransfer.items;
 
-      if (items.length > 0 && typeof items[0].webkitGetAsEntry === 'function') {
-        for (const item of items) {
+      if (itemsData.length > 0 && typeof itemsData[0].webkitGetAsEntry === 'function') {
+        for (const item of itemsData) {
           const entrada = item.webkitGetAsEntry();
-          if (entrada) await recorrerEntrada(entrada, archivosJson);
+          if (entrada) {
+            await leerEntrada(entrada, archivosJson);
+          }
         }
       } else {
-        archivosJson.push(...Array.from(e.dataTransfer.files));
+        const archivosDirectos = Array.from(e.dataTransfer.files).filter((f) =>
+          f.name.toLowerCase().endsWith('.json'),
+        );
+        archivosJson.push(...archivosDirectos);
       }
 
-      const filtrados = archivosJson.filter((f) => f.name.toLowerCase().endsWith('.json'));
-
-      if (filtrados.length === 0) {
-        toast.error('No se encontraron archivos .json en lo soltado');
+      if (archivosJson.length === 0) {
+        toast.error('No se encontraron archivos .json en lo que arrastraste');
         return;
       }
 
-      setArchivosPendientes(filtrados);
+      setArchivosPendientes(archivosJson);
       setConfirmacion('cargar');
-    } catch (err) {
-      toast.error(obtenerError(err));
+    } catch {
+      toast.error('Error al procesar la carpeta o archivos arrastrados');
     }
   }
 
-  async function recorrerEntrada(entrada: FileSystemEntry, resultado: File[]): Promise<void> {
+  async function leerEntrada(entrada: FileSystemEntry, acumulador: File[]): Promise<void> {
     if (entrada.isFile) {
-      if (!entrada.name.toLowerCase().endsWith('.json')) return;
-      const archivo = await new Promise<File>((resolve, reject) => {
-        (entrada as FileSystemFileEntry).file(resolve, reject);
+      const fileEntry = entrada as FileSystemFileEntry;
+      return new Promise((resolve) => {
+        fileEntry.file((file) => {
+          if (file.name.toLowerCase().endsWith('.json')) {
+            acumulador.push(file);
+          }
+          resolve();
+        });
       });
-      resultado.push(archivo);
-      return;
     }
 
-    const lector = (entrada as FileSystemDirectoryEntry).createReader();
-    let lote: FileSystemEntry[];
-    do {
-      lote = await new Promise<FileSystemEntry[]>((resolve, reject) => {
-        lector.readEntries(resolve, reject);
+    if (entrada.isDirectory) {
+      const dirEntry = entrada as FileSystemDirectoryEntry;
+      const lector = dirEntry.createReader();
+      return new Promise((resolve) => {
+        function leerSiguientes() {
+          lector.readEntries(async (entradas) => {
+            if (entradas.length === 0) {
+              resolve();
+              return;
+            }
+            for (const sub of entradas) {
+              await leerEntrada(sub, acumulador);
+            }
+            leerSiguientes();
+          });
+        }
+        leerSiguientes();
       });
-      for (const subEntrada of lote) {
-        await recorrerEntrada(subEntrada, resultado);
-      }
-    } while (lote.length > 0);
-  }
-
-  async function ejecutarCarga() {
-    setConfirmacion(null);
-    setResultado(null);
-    setResumen(null);
-    setProceso('subiendo');
-
-    try {
-      const cargados: ArchivoCargado[] = [];
-      for (const archivo of archivosPendientes) {
-        cargados.push({ file: archivo, content: decodificarArrayBuffer(await archivo.arrayBuffer()) });
-      }
-
-      const resumenes = await subirArchivos(tipo, cargados.map((c) => c.file));
-
-      setArchivos(cargados);
-      setArchivosPendientes([]);
-      setItems(resumenes);
-      setEstados(
-        Object.fromEntries(
-          resumenes.map((item) => [
-            item.id,
-            item.error ? 'error_parseo'
-              : item.fueraPeriodo ? 'fuera_periodo'
-              : item.sinSello ? 'sin_sello'
-              : item.pertenece ? 'pendiente'
-              : 'no_pertenece',
-          ]),
-        ),
-      );
-      toast.success(`${resumenes.length} archivo(s) JSON cargado(s) correctamente`);
-    } catch (err) {
-      toast.error(obtenerError(err));
-    } finally {
-      setProceso(null);
     }
   }
 
   function cancelarSeleccionCarpeta() {
-    setConfirmacion(null);
     setArchivosPendientes([]);
+    setConfirmacion(null);
     if (inputRef.current) inputRef.current.value = '';
   }
 
-  async function manejarValidar() {
+  async function ejecutarCarga() {
+    const seleccionados = archivosPendientes;
+    setConfirmacion(null);
+    setProceso('subiendo');
     setResultado(null);
-    setProceso('validando');
 
     try {
-      const validables: Parameters<typeof validar>[1] = items
-        .filter((item) => estados[item.id] === 'pendiente')
-        .map((item) => ({
-          id: item.id,
-          fileName: item.fileName,
-          codigoGeneracion: item.codigoGeneracion,
-          nitContraparte: item.nitContraparte,
-          nrcContraparte: item.nrcContraparte,
-        }));
+      const cargados: ArchivoCargado[] = [];
 
+      for (const file of seleccionados) {
+        const buffer = await file.arrayBuffer();
+        const content = decodificarArrayBuffer(buffer);
+        cargados.push({ file, content });
+      }
+
+      const resumenes = await subirArchivos(tipo, cargados.map((c) => c.file));
+      setArchivos(cargados);
+      setItems(resumenes);
+
+      const estadosIniciales: Record<number, EstadoItem> = {};
+      for (const item of resumenes) {
+        estadosIniciales[item.id] = item.error
+          ? 'error_parseo'
+          : item.fueraPeriodo
+          ? 'fuera_periodo'
+          : item.sinSello
+          ? 'sin_sello'
+          : item.pertenece
+          ? 'pendiente'
+          : 'no_pertenece';
+      }
+      setEstados(estadosIniciales);
+      setResumen(calcularResumen(estadosIniciales));
+      toast.success(`${resumenes.length} archivo(s) cargado(s) correctamente`);
+    } catch (err) {
+      toast.error(obtenerError(err));
+    } finally {
+      setProceso(null);
+      setArchivosPendientes([]);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  async function manejarValidar() {
+    const validables: Parameters<typeof validar>[1] = items
+      .filter((item) => estados[item.id] === 'pendiente')
+      .map((item) => ({
+        id: item.id,
+        fileName: item.fileName,
+        codigoGeneracion: item.codigoGeneracion,
+        nitContraparte: item.nitContraparte,
+        nrcContraparte: item.nrcContraparte,
+      }));
+
+    if (validables.length === 0) {
+      toast('No hay archivos pendientes de validación');
+      return;
+    }
+
+    setProceso('validando');
+    try {
       const resultados = await validar(tipo, validables);
-
       const nuevosEstados = { ...estados };
       for (const resultado of resultados) {
         nuevosEstados[resultado.id] = resultado.estado;
       }
       setEstados(nuevosEstados);
-
       setResumen(calcularResumen(nuevosEstados));
-      const conteo = resumirEstados(nuevosEstados);
-      toast.success(
-        `Validación: ${conteo.valido} válido(s), ${conteo.duplicado} duplicado(s), ` +
-          `${conteo.contraparte} sin cliente/proveedor`,
-      );
+      toast.success('Validación completada');
     } catch (err) {
       toast.error(obtenerError(err));
     } finally {
@@ -274,8 +300,8 @@ export default function DteUploader({ tipo, titulo }: Props) {
     setProceso('guardando');
 
     try {
-      const seleccionados = items.filter((item) => estados[item.id] === 'valido');
-      const aGuardar = seleccionados
+      const aGuardar = items
+        .filter((i) => estados[i.id] === 'valido')
         .map((item) => ({
           fileName: item.fileName,
           content: archivos.find((a) => a.file.name === item.fileName)?.content ?? '',
@@ -330,31 +356,42 @@ export default function DteUploader({ tipo, titulo }: Props) {
   }
 
   return (
-    <div className="pagina pagina-ancha">
-      <header className="barra">
-        <h1>{titulo}</h1>
-        <Link to="/" className="btn-secundario">
-          Volver
-        </Link>
-      </header>
+    <div className="pagina">
+      {/* Page Header aligned with system standard */}
+      <div className="page-header">
+        <div className="page-header-title">
+          <h1>{titulo}</h1>
+          <p className="page-header-subtitle">
+            {tipo === 'ventas'
+              ? 'Carga electrónica masiva y validación de DTE emitidos (ventas_iva) por la empresa.'
+              : 'Carga electrónica masiva y validación de DTE recibidos (compras_iva) por la empresa.'}
+          </p>
+        </div>
+        <div className="header-actions">
+          <Link
+            to={tipo === 'ventas' ? '/control-iva/ventas' : '/control-iva/compras'}
+            className="btn-secundario"
+            title={`Ir al libro de ${tipo === 'ventas' ? 'Ventas' : 'Compras'}`}
+          >
+            <span>Ir a Libro de {tipo === 'ventas' ? 'Ventas IVA' : 'Compras IVA'}</span>
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
 
       <main className="contenido">
+        {/* Upload Card */}
         <section className="card">
-          <h2>Seleccionar carpeta con JSON de DTE</h2>
-          <p className="nota">
-            {tipo === 'ventas'
-              ? 'Se cargarán solo los DTE donde el emisor sea la empresa configurada.'
-              : 'Se cargarán solo los DTE donde el receptor sea la empresa configurada.'}
-          </p>
           {tipo === 'compras' && (
             <div className={`periodo-info ${sinPeriodo ? 'periodo-info-sin' : ''}`}>
               {periodoCargado
                 ? sinPeriodo
-                  ? 'No hay periodo de compras configurado para esta empresa'
-                  : `Periodo de compras: ${String(periodo?.mes).padStart(2, '0')} / ${periodo?.anio}`
-                : 'Consultando periodo de compras…'}
+                  ? '⚠️ No hay período de compras activo configurado para esta empresa'
+                  : `📅 Período fiscal de compras activo: ${String(periodo?.mes).padStart(2, '0')} / ${periodo?.anio}`
+                : 'Consultando período de compras…'}
             </div>
           )}
+
           <div
             className={`zona-arrastre ${arrastrando ? 'zona-arrastre-activa' : ''} ${sinPeriodo ? 'zona-arrastre-deshabilitada' : ''}`}
             onDragOver={(e) => {
@@ -363,18 +400,29 @@ export default function DteUploader({ tipo, titulo }: Props) {
             }}
             onDragLeave={() => setArrastrando(false)}
             onDrop={manejarSoltar}
+            onClick={() => uploadHabilitado && !deshabilitado && inputRef.current?.click()}
+            style={{ cursor: uploadHabilitado && !deshabilitado ? 'pointer' : 'not-allowed' }}
           >
-            <p>Arrastra la carpeta o los archivos .json aquí</p>
+            <div className="zona-arrastre-icon">
+              <UploadCloud size={40} />
+            </div>
+            <p className="zona-arrastre-text">
+              Arrastra y suelta aquí la carpeta o archivos <strong>.JSON</strong>
+            </p>
+            <span className="zona-arrastre-subtext">o haz clic aquí para seleccionar desde tu equipo</span>
+            <div className="zona-arrastre-btn-wrap" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className="btn-primario"
+                onClick={() => inputRef.current?.click()}
+                disabled={deshabilitado || !uploadHabilitado}
+              >
+                <FolderUp size={16} />
+                <span>Elegir archivos JSON</span>
+              </button>
+            </div>
           </div>
-          <div className="acciones">
-            <button
-              className="btn-primario"
-              onClick={() => inputRef.current?.click()}
-              disabled={deshabilitado || !uploadHabilitado}
-            >
-              Elegir archivos
-            </button>
-          </div>
+
           <input
             ref={inputRef}
             type="file"
@@ -383,16 +431,25 @@ export default function DteUploader({ tipo, titulo }: Props) {
             style={{ display: 'none' }}
             onChange={(e) => manejarCarpeta(e.target.files)}
           />
-          <p className="nota">Archivos cargados: {items.length}</p>
+
+          {items.length > 0 && (
+            <div className="archivos-cargados-status">
+              <FileCode2 size={16} className="text-primary" />
+              <span>
+                Archivos en memoria para procesamiento: <strong>{items.length}</strong>
+              </span>
+            </div>
+          )}
         </section>
 
+        {/* Validation Summary Metrics */}
         {resumen && (
-          <section className="card resumen-validacion">
-            <h3>Resumen</h3>
+          <section className="card resumen-validacion mt-4">
+            <h3 className="resumen-section-title">Resumen de Validación del Lote</h3>
             <div className="resumen-items">
               <div className="resumen-item">
                 <strong>{resumen.total}</strong>
-                <span>Total</span>
+                <span>Total Archivos</span>
               </div>
               {resumen.valido > 0 && (
                 <div className="resumen-item resumen-valido">
@@ -458,55 +515,72 @@ export default function DteUploader({ tipo, titulo }: Props) {
           </section>
         )}
 
+        {/* Save Result Banner */}
         {resultado && (
-          <section className="card resumen-guardado">
-            <h3>Resultado del guardado</h3>
+          <section className="card resumen-guardado mt-4">
+            <h3>Resultado del guardado masivo</h3>
             <p>
-              <strong>{resultado.insertados}</strong> documento(s) insertado(s) ·{' '}
+              <strong>{resultado.insertados}</strong> documento(s) insertado(s) exitosamente ·{' '}
               <strong>{resultado.errores}</strong> con error
             </p>
           </section>
         )}
 
+        {/* Document Table Section */}
         {items.length > 0 && (
-          <section className="card">
-            <div className="acciones">
-              <button
-                className="btn-primario"
-                onClick={manejarValidar}
-                disabled={deshabilitado || !items.some((i) => estados[i.id] === 'pendiente')}
-              >
-                {proceso === 'validando' ? 'Validando…' : 'Validar'}
-              </button>
-              <button
-                className="btn-primario"
-                onClick={() => setConfirmacion('guardar')}
-                disabled={deshabilitado || !hayValidos}
-                title={hayValidos ? `Guardar ${cantidadValidos} documento(s) válido(s)` : ''}
-              >
-                {proceso === 'guardando' ? 'Guardando…' : `Guardar válidos (${cantidadValidos})`}
-              </button>
-              <button
-                className="btn-peligro"
-                onClick={() => setConfirmacion('cancelar')}
-                disabled={deshabilitado}
-              >
-                Cancelar carga
-              </button>
+          <section className="card mt-4">
+            <div className="table-header-toolbar">
+              <div className="table-header-info">
+                <h3 className="table-title">Documentos DTE Procesados ({items.length})</h3>
+                <span className="text-muted text-xs">
+                  (Doble clic en cualquier fila para visualizar el JSON completo)
+                </span>
+              </div>
+              <div className="header-actions">
+                <button
+                  type="button"
+                  className="btn-primario"
+                  onClick={manejarValidar}
+                  disabled={deshabilitado || !items.some((i) => estados[i.id] === 'pendiente')}
+                >
+                  <CheckCircle2 size={16} />
+                  <span>{proceso === 'validando' ? 'Validando…' : 'Validar Lote'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primario"
+                  style={{ background: '#059669', borderColor: '#047857' }}
+                  onClick={() => setConfirmacion('guardar')}
+                  disabled={deshabilitado || !hayValidos}
+                  title={hayValidos ? `Guardar ${cantidadValidos} documento(s) válido(s)` : ''}
+                >
+                  <Save size={16} />
+                  <span>{proceso === 'guardando' ? 'Guardando…' : `Guardar válidos (${cantidadValidos})`}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-peligro"
+                  onClick={() => setConfirmacion('cancelar')}
+                  disabled={deshabilitado}
+                >
+                  <Trash2 size={16} />
+                  <span>Cancelar carga</span>
+                </button>
+              </div>
             </div>
 
-            <div className="tabla-scroll">
-              <table className="tabla">
+            <div className="data-table-container">
+              <table className="data-table tabla-compacta">
                 <thead>
                   <tr>
-                    <th>#</th>
+                    <th style={{ width: 45, textAlign: 'center' }}>#</th>
                     <th>Archivo</th>
-                    <th>Tipo</th>
+                    <th>Tipo DTE</th>
                     <th>Fecha</th>
-                    <th>NIT/NRC</th>
+                    <th>NIT / NRC</th>
                     <th>Contraparte</th>
-                    <th>Monto</th>
-                    <th>Estado</th>
+                    <th style={{ textAlign: 'right' }}>Monto ($)</th>
+                    <th style={{ textAlign: 'center' }}>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -525,13 +599,11 @@ export default function DteUploader({ tipo, titulo }: Props) {
         )}
       </main>
 
-      <footer className="pie-version">Versión {VERSION_APP} · Carga DTE</footer>
-
       {confirmacion === 'cargar' && (
         <ConfirmModal
-          titulo="Cargar archivos"
-          mensaje={`¿Deseas cargar los ${archivosPendientes.length} archivo(s) JSON seleccionados?`}
-          textoConfirmar="Cargar"
+          titulo="Cargar archivos JSON"
+          mensaje={`¿Deseas cargar los ${archivosPendientes.length} archivo(s) JSON seleccionados en memoria?`}
+          textoConfirmar="Cargar Lote"
           textoCancelar="Cancelar"
           variante="confirmar"
           onConfirmar={ejecutarCarga}
@@ -541,9 +613,9 @@ export default function DteUploader({ tipo, titulo }: Props) {
 
       {confirmacion === 'guardar' && (
         <ConfirmModal
-          titulo="Guardar documentos"
-          mensaje={`¿Deseas guardar ${cantidadValidos} documento(s) válido(s) en la base de datos?`}
-          textoConfirmar="Guardar"
+          titulo="Guardar documentos válidos"
+          mensaje={`¿Deseas guardar ${cantidadValidos} documento(s) válido(s) directamente en la base de datos de ${tipo === 'ventas' ? 'Ventas IVA' : 'Compras IVA'}?`}
+          textoConfirmar="Guardar en Base de Datos"
           textoCancelar="Volver"
           variante="confirmar"
           onConfirmar={ejecutarGuardar}
@@ -553,9 +625,9 @@ export default function DteUploader({ tipo, titulo }: Props) {
 
       {confirmacion === 'cancelar' && (
         <ConfirmModal
-          titulo="Cancelar carga"
-          mensaje={`¿Seguro que deseas cancelar la carga? Se descartarán ${items.length} documento(s).`}
-          textoConfirmar="Cancelar carga"
+          titulo="Cancelar carga de lote"
+          mensaje={`¿Seguro que deseas cancelar la carga? Se descartarán los ${items.length} documento(s) cargados en memoria.`}
+          textoConfirmar="Descartar Lote"
           textoCancelar="Mantener"
           variante="peligro"
           onConfirmar={ejecutarCancelar}
@@ -572,18 +644,4 @@ export default function DteUploader({ tipo, titulo }: Props) {
       )}
     </div>
   );
-}
-
-function resumirEstados(estados: Record<number, EstadoItem>): {
-  valido: number;
-  duplicado: number;
-  contraparte: number;
-} {
-  const valores = Object.values(estados);
-  return {
-    valido: valores.filter((e) => e === 'valido').length,
-    duplicado: valores.filter((e) => e === 'duplicado').length,
-    contraparte: valores.filter((e) => e === 'cliente_no_existe' || e === 'proveedor_no_existe')
-      .length,
-  };
 }

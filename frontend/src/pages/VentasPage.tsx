@@ -1,9 +1,10 @@
 import DteUploader from '../components/DteUploader';
+import ControlIvaLayout from '../components/layout/ControlIvaLayout';
 
 export default function VentasPage() {
   return (
-    <div className="pagina">
-      <DteUploader tipo="ventas" titulo="Carga de Ventas" />
-    </div>
+    <ControlIvaLayout>
+      <DteUploader tipo="ventas" titulo="Carga de Json-DTE Ventas" />
+    </ControlIvaLayout>
   );
 }
