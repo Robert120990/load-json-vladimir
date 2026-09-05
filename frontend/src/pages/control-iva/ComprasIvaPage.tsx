@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, CheckCircle2, Edit2, Eye, Plus, Settings2, Trash2 } from 'lucide-react';
 import {
@@ -59,6 +59,7 @@ export default function ComprasIvaPage() {
   // Catalogs
   const [docTypes, setDocTypes] = useState<DocumentType[]>([]);
   const [proveedores, setProveedores] = useState<Supplier[]>([]);
+  const [searchingProveedores, setSearchingProveedores] = useState(false);
 
   // Modals
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view' | null>(null);
@@ -77,6 +78,28 @@ export default function ComprasIvaPage() {
   // Supplier on-the-fly Modal
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
+
+  const selectedProveedorRef = useRef(formData.cod_proveedor);
+  selectedProveedorRef.current = formData.cod_proveedor;
+
+  async function handleSearchProveedores(query: string) {
+    try {
+      setSearchingProveedores(true);
+      const res = await fetchProveedores({ search: query, limit: 100 });
+      setProveedores((prev) => {
+        const selectedCode = selectedProveedorRef.current;
+        const currentSelected = prev.find((p) => p.cod_proveedor === selectedCode);
+        if (currentSelected && !res.data.some((p) => p.cod_proveedor === selectedCode)) {
+          return [currentSelected, ...res.data];
+        }
+        return res.data;
+      });
+    } catch (err) {
+      console.error('Error al buscar proveedores:', err);
+    } finally {
+      setSearchingProveedores(false);
+    }
+  }
 
   function abrirCrearProveedorDesdeCompras() {
     setSupplierToEdit(null);
@@ -107,7 +130,7 @@ export default function ComprasIvaPage() {
     fetchTiposDocumentoCompras()
       .then(setDocTypes)
       .catch(() => {});
-    fetchProveedores({ limit: 500 })
+    fetchProveedores({ limit: 100 })
       .then((res) => setProveedores(res.data))
       .catch(() => {});
 
@@ -227,6 +250,22 @@ export default function ComprasIvaPage() {
     setSelectedCompra(compra);
     setFormData({ ...compra });
     setFormErrors({});
+    if (compra.cod_proveedor) {
+      setProveedores((prev) => {
+        if (!prev.some((p) => p.cod_proveedor === compra.cod_proveedor)) {
+          return [
+            {
+              cod_proveedor: compra.cod_proveedor,
+              nom_proveedor: compra.nom_proveedor || compra.cod_proveedor,
+              registro: compra.registro_proveedor || '',
+              nit_proveedor: compra.nit_proveedor || '',
+            } as Supplier,
+            ...prev,
+          ];
+        }
+        return prev;
+      });
+    }
     setModalMode('edit');
   }
 
@@ -607,6 +646,8 @@ export default function ComprasIvaPage() {
                   }))}
                   value={formData.cod_proveedor ?? ''}
                   onChange={(val) => setFormData({ ...formData, cod_proveedor: val })}
+                  onSearch={handleSearchProveedores}
+                  isLoading={searchingProveedores}
                   placeholder="Buscar proveedor por nombre, NRC o código..."
                   hasError={!!formErrors.cod_proveedor}
                 />

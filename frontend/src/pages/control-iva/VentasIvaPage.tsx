@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, Edit2, Eye, Plus, Trash2, Zap } from 'lucide-react';
 import {
@@ -50,6 +50,7 @@ export default function VentasIvaPage() {
   // Catalogs
   const [docTypes, setDocTypes] = useState<DocumentType[]>([]);
   const [clientes, setClientes] = useState<Client[]>([]);
+  const [searchingClientes, setSearchingClientes] = useState(false);
 
   // Modals
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view' | null>(null);
@@ -71,6 +72,28 @@ export default function VentasIvaPage() {
 
   // Quick Consumer Batch Modal
   const [quickConsumerOpen, setQuickConsumerOpen] = useState(false);
+
+  const selectedClienteRef = useRef(formData.cod_cliente);
+  selectedClienteRef.current = formData.cod_cliente;
+
+  async function handleSearchClientes(query: string) {
+    try {
+      setSearchingClientes(true);
+      const res = await fetchClientes({ search: query, limit: 100 });
+      setClientes((prev) => {
+        const selectedCode = selectedClienteRef.current;
+        const currentSelected = prev.find((c) => c.cod_cliente === selectedCode);
+        if (currentSelected && !res.data.some((c) => c.cod_cliente === selectedCode)) {
+          return [currentSelected, ...res.data];
+        }
+        return res.data;
+      });
+    } catch (err) {
+      console.error('Error al buscar clientes:', err);
+    } finally {
+      setSearchingClientes(false);
+    }
+  }
 
   function abrirCrearClienteDesdeVentas() {
     setClientToEdit(null);
@@ -101,7 +124,7 @@ export default function VentasIvaPage() {
     fetchTiposDocumentoVentas()
       .then(setDocTypes)
       .catch(() => {});
-    fetchClientes({ limit: 500 })
+    fetchClientes({ limit: 100 })
       .then((res) => setClientes(res.data))
       .catch(() => {});
   }, []);
@@ -184,6 +207,22 @@ export default function VentasIvaPage() {
     setSelectedVenta(venta);
     setFormData({ ...venta });
     setFormErrors({});
+    if (venta.cod_cliente) {
+      setClientes((prev) => {
+        if (!prev.some((c) => c.cod_cliente === venta.cod_cliente)) {
+          return [
+            {
+              cod_cliente: venta.cod_cliente,
+              nom_cliente: venta.nom_cliente || venta.cod_cliente,
+              registro: venta.registro_cliente || '',
+              nit_cliente: venta.nit_cliente || '',
+            } as Client,
+            ...prev,
+          ];
+        }
+        return prev;
+      });
+    }
     setModalMode('edit');
   }
 
@@ -546,6 +585,8 @@ export default function VentasIvaPage() {
                   }))}
                   value={formData.cod_cliente ?? ''}
                   onChange={(val) => setFormData({ ...formData, cod_cliente: val })}
+                  onSearch={handleSearchClientes}
+                  isLoading={searchingClientes}
                   placeholder="Buscar cliente por nombre, NRC o código..."
                   hasError={!!formErrors.cod_cliente}
                 />

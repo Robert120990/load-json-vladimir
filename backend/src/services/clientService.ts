@@ -10,7 +10,7 @@ export interface ListClientsParams {
 
 export async function listClients(params: ListClientsParams): Promise<PaginatedResult<Client>> {
   const page = Math.max(1, Number(params.page) || 1);
-  const limit = Math.max(1, Math.min(100, Number(params.limit) || 20));
+  const limit = Math.max(1, Math.min(500, Number(params.limit) || 20));
   const offset = (page - 1) * limit;
 
   const conditions: string[] = [];

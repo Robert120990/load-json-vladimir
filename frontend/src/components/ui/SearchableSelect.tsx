@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, Search, X } from 'lucide-react';
 import { matchesSearchTokens } from '../../utils/searchUtils';
 
 export interface SearchableOption {
@@ -13,6 +13,8 @@ interface SearchableSelectProps {
   options: SearchableOption[];
   value: string;
   onChange: (value: string) => void;
+  onSearch?: (query: string) => void;
+  isLoading?: boolean;
   placeholder?: string;
   disabled?: boolean;
   hasError?: boolean;
@@ -24,6 +26,8 @@ export default function SearchableSelect({
   options,
   value,
   onChange,
+  onSearch,
+  isLoading = false,
   placeholder = 'Seleccionar...',
   disabled = false,
   hasError = false,
@@ -34,24 +38,13 @@ export default function SearchableSelect({
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const selectedOption = options.find((opt) => opt.value === value);
-
-  // Close on outside click
+  const onSearchRef = useRef(onSearch);
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        setSearchQuery('');
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedOption = options.find((opt) => opt.value === value);
 
   // Focus search input when dropdown opens
   useEffect(() => {
@@ -60,27 +53,78 @@ export default function SearchableSelect({
     }
   }, [isOpen]);
 
-  // Filtered options based on multi-word query
-  const filteredOptions = options.filter((opt) =>
-    matchesSearchTokens([opt.label, opt.subLabel, opt.value, opt.badge], searchQuery)
-  );
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, []);
+
+  function handleSearchInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const text = e.target.value;
+    setSearchQuery(text);
+    if (onSearchRef.current) {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+      searchTimerRef.current = setTimeout(() => {
+        onSearchRef.current?.(text);
+      }, 250);
+    }
+  }
+
+  function resetSearch() {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    if (searchQuery) {
+      setSearchQuery('');
+      onSearchRef.current?.('');
+    }
+  }
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        resetSearch();
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, searchQuery]);
+
+  // When onSearch is provided, options are already filtered by the server.
+  // When onSearch is not provided, filter locally in-memory.
+  const filteredOptions = onSearch
+    ? options
+    : options.filter((opt) =>
+        matchesSearchTokens([opt.label, opt.subLabel, opt.value, opt.badge], searchQuery)
+      );
 
   function handleSelect(val: string) {
     onChange(val);
     setIsOpen(false);
-    setSearchQuery('');
+    resetSearch();
   }
 
   function handleClear(e: React.MouseEvent) {
     e.stopPropagation();
     onChange('');
-    setSearchQuery('');
+    resetSearch();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
       setIsOpen(false);
-      setSearchQuery('');
+      resetSearch();
     }
   }
 
@@ -142,21 +186,25 @@ export default function SearchableSelect({
       {isOpen && (
         <div className="searchable-select-dropdown">
           <div className="searchable-search-box">
-            <Search size={15} className="searchable-search-icon" />
+            {isLoading ? (
+              <Loader2 size={14} className="searchable-search-icon animate-spin text-blue-500" />
+            ) : (
+              <Search size={15} className="searchable-search-icon" />
+            )}
             <input
               ref={searchInputRef}
               type="text"
               className="searchable-search-input"
               placeholder="Escribe para buscar..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchInputChange}
               onClick={(e) => e.stopPropagation()}
             />
             {searchQuery && (
               <button
                 type="button"
                 className="searchable-search-clear"
-                onClick={() => setSearchQuery('')}
+                onClick={resetSearch}
               >
                 <X size={13} />
               </button>
@@ -164,7 +212,9 @@ export default function SearchableSelect({
           </div>
 
           <div className="searchable-options-list">
-            {filteredOptions.length === 0 ? (
+            {isLoading && filteredOptions.length === 0 ? (
+              <div className="searchable-no-results">Buscando…</div>
+            ) : filteredOptions.length === 0 ? (
               <div className="searchable-no-results">{emptyText}</div>
             ) : (
               filteredOptions.map((opt) => {
@@ -197,3 +247,4 @@ export default function SearchableSelect({
     </div>
   );
 }
+
