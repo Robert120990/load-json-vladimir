@@ -32,14 +32,14 @@ jobs:
         with:
           context: backend
           push: true
-          tags: ghcr.io/robert120990/load-json-vladimir/backend:latest
+          tags: ghcr.io/robert120990/administracion-tributaria/backend:latest
 
       - name: Build y push frontend
         uses: docker/build-push-action@v6
         with:
           context: frontend
           push: true
-          tags: ghcr.io/robert120990/load-json-vladimir/frontend:latest
+          tags: ghcr.io/robert120990/administracion-tributaria/frontend:latest
           build-args: |
             VITE_API_URL=/api
 
