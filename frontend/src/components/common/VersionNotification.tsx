@@ -8,6 +8,31 @@ interface VersionResponse {
   timestamp: number;
 }
 
+function parseVersionNumbers(ver: string): number[] {
+  return ver
+    .replace(/^v/i, '')
+    .split(/[.-]/)
+    .map((part) => parseInt(part, 10))
+    .filter((n) => !isNaN(n));
+}
+
+function isNewerVersion(remote: string, current: string): boolean {
+  if (!remote || !current) return false;
+  if (remote === current) return false;
+
+  const remoteParts = parseVersionNumbers(remote);
+  const currentParts = parseVersionNumbers(current);
+
+  const maxLength = Math.max(remoteParts.length, currentParts.length);
+  for (let i = 0; i < maxLength; i++) {
+    const r = remoteParts[i] || 0;
+    const c = currentParts[i] || 0;
+    if (r > c) return true;
+    if (r < c) return false;
+  }
+  return false;
+}
+
 const CHECK_INTERVAL_MS = 60 * 1000; // Cada 60 segundos
 const SNOOZE_DURATION_MS = 10 * 60 * 1000; // 10 minutos de posposición
 
@@ -25,8 +50,12 @@ export default function VersionNotification() {
           params: { _t: Date.now() },
         });
 
-        if (isMounted && data?.version && data.version !== VERSION_APP) {
-          setLatestVersion(data.version);
+        if (isMounted) {
+          if (data?.version && isNewerVersion(data.version, VERSION_APP)) {
+            setLatestVersion(data.version);
+          } else {
+            setLatestVersion(null);
+          }
         }
       } catch {
         // Silencioso ante fallos de red
