@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { matchesSearchTokens } from '../../utils/searchUtils';
 
 export interface SearchableOption {
   value: string;
@@ -59,16 +60,10 @@ export default function SearchableSelect({
     }
   }, [isOpen]);
 
-  // Filtered options based on query
-  const queryClean = searchQuery.toLowerCase().trim();
-  const filteredOptions = options.filter((opt) => {
-    if (!queryClean) return true;
-    const matchLabel = opt.label.toLowerCase().includes(queryClean);
-    const matchSub = opt.subLabel ? opt.subLabel.toLowerCase().includes(queryClean) : false;
-    const matchValue = opt.value.toLowerCase().includes(queryClean);
-    const matchBadge = opt.badge ? opt.badge.toLowerCase().includes(queryClean) : false;
-    return matchLabel || matchSub || matchValue || matchBadge;
-  });
+  // Filtered options based on multi-word query
+  const filteredOptions = options.filter((opt) =>
+    matchesSearchTokens([opt.label, opt.subLabel, opt.value, opt.badge], searchQuery)
+  );
 
   function handleSelect(val: string) {
     onChange(val);

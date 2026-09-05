@@ -17,11 +17,14 @@ export async function listClients(params: ListClientsParams): Promise<PaginatedR
   const queryParams: unknown[] = [];
 
   if (params.search && params.search.trim()) {
-    const term = `%${params.search.trim()}%`;
-    conditions.push(
-      '(c.nom_cliente LIKE ? OR c.cod_cliente LIKE ? OR c.registro LIKE ? OR c.nit_cliente LIKE ? OR c.giro LIKE ?)',
-    );
-    queryParams.push(term, term, term, term, term);
+    const tokens = params.search.trim().split(/\s+/).filter(Boolean);
+    for (const token of tokens) {
+      const term = `%${token}%`;
+      conditions.push(
+        '(c.nom_cliente LIKE ? OR c.cod_cliente LIKE ? OR c.registro LIKE ? OR c.nit_cliente LIKE ? OR c.giro LIKE ?)',
+      );
+      queryParams.push(term, term, term, term, term);
+    }
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

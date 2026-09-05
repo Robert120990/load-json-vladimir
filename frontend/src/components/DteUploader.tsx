@@ -359,9 +359,9 @@ export default function DteUploader({ tipo, titulo }: Props) {
     <div className="pagina">
       {/* Page Header aligned with system standard */}
       <div className="page-header">
-        <div className="page-header-title">
-          <h1>{titulo}</h1>
-          <p className="page-header-subtitle">
+        <div>
+          <h1 className="page-title">{titulo}</h1>
+          <p className="page-subtitle">
             {tipo === 'ventas'
               ? 'Carga electrónica masiva y validación de DTE emitidos (ventas_iva) por la empresa.'
               : 'Carga electrónica masiva y validación de DTE recibidos (compras_iva) por la empresa.'}
@@ -569,8 +569,8 @@ export default function DteUploader({ tipo, titulo }: Props) {
               </div>
             </div>
 
-            <div className="data-table-container">
-              <table className="data-table tabla-compacta">
+            <div className="tabla-contenedor">
+              <table className="tabla-registros">
                 <thead>
                   <tr>
                     <th style={{ width: 45, textAlign: 'center' }}>#</th>

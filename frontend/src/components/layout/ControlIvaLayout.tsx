@@ -4,11 +4,15 @@ import {
   BookOpen,
   Building2,
   FileSpreadsheet,
+  FileText,
+  FolderTree,
+  Hash,
   LayoutDashboard,
   LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  PenTool,
   Receipt,
   ShoppingCart,
   UploadCloud,
@@ -60,6 +64,15 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
       group: 'Principal',
       items: [
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      group: 'Contabilidad',
+      items: [
+        { path: '/contabilidad/partidas', label: 'Partidas Contables', icon: FileText },
+        { path: '/contabilidad/catalogo', label: 'Catálogo de Cuentas', icon: FolderTree },
+        { path: '/contabilidad/correlativos', label: 'Correlativos', icon: Hash },
+        { path: '/contabilidad/firmas', label: 'Firmas Contables', icon: PenTool },
       ],
     },
     {
@@ -202,11 +215,19 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
             </button>
 
             <div className="topbar-title">
-              <span className="breadcrumb-module">Control IVA</span>
+              <span className="breadcrumb-module">
+                {location.pathname.startsWith('/contabilidad') ? 'Contabilidad' : 'Control IVA'}
+              </span>
               <span className="breadcrumb-separator">/</span>
               <span className="breadcrumb-page">
                 {location.pathname === '/dashboard'
                   ? 'Dashboard'
+                  : location.pathname.includes('/contabilidad/partidas')
+                  ? 'Partidas Contables'
+                  : location.pathname.includes('/contabilidad/catalogo')
+                  ? 'Catálogo de Cuentas'
+                  : location.pathname.includes('/contabilidad/firmas')
+                  ? 'Firmas Contables'
                   : location.pathname.includes('/clientes')
                   ? 'Clientes'
                   : location.pathname.includes('/proveedores')

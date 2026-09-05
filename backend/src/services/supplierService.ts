@@ -17,11 +17,14 @@ export async function listSuppliers(params: ListSuppliersParams): Promise<Pagina
   const queryParams: unknown[] = [];
 
   if (params.search && params.search.trim()) {
-    const term = `%${params.search.trim()}%`;
-    conditions.push(
-      '(p.nom_proveedor LIKE ? OR p.cod_proveedor LIKE ? OR p.registro LIKE ? OR p.nit_proveedor LIKE ? OR p.giro LIKE ?)',
-    );
-    queryParams.push(term, term, term, term, term);
+    const tokens = params.search.trim().split(/\s+/).filter(Boolean);
+    for (const token of tokens) {
+      const term = `%${token}%`;
+      conditions.push(
+        '(p.nom_proveedor LIKE ? OR p.cod_proveedor LIKE ? OR p.registro LIKE ? OR p.nit_proveedor LIKE ? OR p.giro LIKE ?)',
+      );
+      queryParams.push(term, term, term, term, term);
+    }
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

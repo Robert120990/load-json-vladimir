@@ -2,12 +2,12 @@
 name: sistema-design-system
 description: >-
   Guía completa de diseño, componentes UI, paleta de colores, estándares de navegación
-  con Enter y patrones visuales del sistema Módulo Tributario / Control IVA.
+  con Enter, reglas de búsqueda multi-token, y patrones visuales del sistema Módulo Tributario / Control IVA / Contabilidad.
 ---
 
-# Sistema de Diseño y Estándares UI/UX (Módulo Tributario)
+# Sistema de Diseño y Estándares UI/UX (Módulo Tributario y Contabilidad)
 
-Esta guía define las directrices oficiales de diseño, componentes, paleta cromática, patrones de interacción y estándares de experiencia de usuario para toda la aplicación.
+Esta guía define las directrices oficiales de diseño, componentes, paleta cromática, patrones de interacción, captura de datos y estándares de experiencia de usuario para toda la aplicación. Todo desarrollador o agente de IA **DEBE** consultar y cumplir estas directrices antes de implementar cualquier nueva pantalla o refactorización.
 
 ---
 
@@ -32,114 +32,196 @@ Esta guía define las directrices oficiales de diseño, componentes, paleta crom
 - **Tarjetas y Modales**: `#ffffff` (Borde `#e2e8f0`, Sombra `0 10px 25px -5px rgba(15, 23, 42, 0.08)`)
 
 ### Estados y Semántica
-- **Éxito (Success)**: Texto `#065f46`, Fondo `#ecfdf5`, Borde `#10b981` / `#a7f3d0`
-- **Error / Peligro (Danger)**: Texto `#991b1b`, Fondo `#fef2f2`, Borde `#ef4444` / `#fecaca`
+- **Éxito (Success / Cuadrado)**: Texto `#065f46`, Fondo `#ecfdf5`, Borde `#10b981` / `#a7f3d0`
+- **Error / Peligro (Danger / Descuadre)**: Texto `#991b1b`, Fondo `#fef2f2`, Borde `#ef4444` / `#fecaca`
 - **Advertencia (Warning)**: Texto `#92400e`, Fondo `#fffbeb`, Borde `#f59e0b` / `#fde68a`
 - **Información / Resumen**: Texto `#1e40af`, Fondo `#eff6ff`, Borde `#bfdbfe`
 
 ---
 
-## 3. Estructura de Layout y Menú Lateral
+## 3. Estándar de Encabezados de Páginas y Listados Principales
 
-### Menú Lateral Contraíble (Sidebar)
-- **Ancho Expandido**: `260px`
-- **Ancho Compacto**: `72px`
-- **Transición**: `transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1)`
-- **Modo Compacto**:
-  - Los textos y encabezados de grupos se ocultan.
-  - Los iconos se centran (`width: 44px, height: 44px`) y llevan `title={item.label}` para tooltips nativos.
-- **Persistencia**: La preferencia se almacena en `localStorage.getItem('sidebar_collapsed')`.
-- **Móvil (`max-width: 1024px`)**: Se transforma automáticamente en un cajón deslizante con fondo oscuro (`sidebar-backdrop`).
-
-### Barra Superior (Topbar)
-- **Altura fija**: `60px` sticky en la parte superior (`z-index: 20`).
-- **Lado Izquierdo**: Botón menú móvil + Botón colapso escritorio (`desktop-sidebar-toggle-btn`) + Breadcrumb de navegación.
-- **Lado Derecho**: Badge de Empresa activa (`topbar-empresa`) + Botón secundario Cerrar Sesión.
-
----
-
-## 4. Estándar de Navegación Continua con Tecla `Enter`
-
-Todo formulario o modal **debe implementar obligatoriamente** la navegación continua con `Enter`:
+Todas las páginas de listado (Clientes, Proveedores, Compras, Ventas, Partidas Contables, Catálogo de Cuentas, Carga JSON) deben compartir exactamente la misma estructura de cabecera y barra de herramientas:
 
 ```tsx
-import { handleEnterNavigation } from '../utils/formNavigation';
+<div className="page-header-container">
+  <div className="flex items-center justify-between gap-4 mb-6">
+    {/* Título e Ícono */}
+    <div className="flex items-center gap-3">
+      <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+        <BookOpen size={24} />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Partidas Contables</h1>
+        <p className="text-sm text-slate-500">Gestión de asientos de diario, ajustes y cierres contables</p>
+      </div>
+    </div>
 
-// En el formulario o contenedor:
-<form onSubmit={handleSave} onKeyDown={handleEnterNavigation}>
-  {/* Inputs y Selects */}
-</form>
-```
+    {/* Acciones Principales */}
+    <div className="flex items-center gap-3">
+      <button onClick={handleOpenModal} className="btn-primario btn-icon-gap">
+        <Plus size={18} />
+        <span>Nueva Partida</span>
+      </button>
+    </div>
+  </div>
 
-### Reglas de Navegación:
-1. Al presionar `Enter` en cualquier `input` o `select`, el foco salta al siguiente campo editable y selecciona su texto para reemplazo rápido.
-2. Los `textarea` mantienen su comportamiento normal (salto de línea).
-3. En el último campo o botón de acción (`type="submit"`), `Enter` ejecuta el guardado directo.
-
----
-
-## 5. Indicador de Versión y Estado Activo
-
-Toda referencia a la versión del sistema (`VERSION_APP`) debe lucir tecnológica y llamativa:
-
-### Estructura con Pulso Vivo (Live Dot):
-```tsx
-<div className="version-pill-badge" title={`Versión: ${VERSION_APP}`}>
-  <span className="version-pulse-dot" />
-  <span className="version-tag-text">VER</span>
-  <span className="version-number-highlight">{VERSION_APP}</span>
+  {/* Barra de Filtros y Búsqueda */}
+  <div className="filtros-card mb-6">
+    <div className="search-box">
+      <Search size={18} className="search-icon" />
+      <input
+        type="text"
+        placeholder="Buscar por concepto, correlativo..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="search-input"
+      />
+    </div>
+    <div className="registros-badge">
+      <span>{filteredItems.length} registros</span>
+    </div>
+  </div>
 </div>
 ```
 
-- **Animación**: `@keyframes pulse-dot` con halo esmeralda continuo.
-- **Gradiente**: Texto de versión con clip gradiente `#60a5fa` $\rightarrow$ `#38bdf8`.
+### ❌ Anti-Patrones en Encabezados:
+- **NO** crear barras de búsqueda flotantes sin el formato estándar `.filtros-card`.
+- **NO** omitir el contador de registros encontrados.
+- **NO** cambiar la posición de los botones de acción principal (siempre a la derecha superior).
 
 ---
 
-## 6. Notificaciones Toast del Sistema
+## 4. Estándar de Tablas de Datos (`tabla-moderna`)
 
-Las notificaciones deben ser limpias, ubicadas en la esquina superior derecha:
+1. **Estructura**: Envolver siempre en `<div className="tabla-container-card">` con `<table className="tabla-moderna">`.
+2. **Formato de Fechas**: **Obligatoriamente** `DD/MM/YYYY` (mediante `formatFechaDDMMYYYY`). Jamás mostrar `YYYY-MM-DD` o cadenas ISO crudas.
+3. **Columnas Innecesarias**: **NO** incluir columnas redundantes (por ejemplo, columna "Estado: ACTIVO" si todos los registros están activos y no aporta valor visual).
+4. **Valores Monetarios**: Siempre con clase `font-mono font-bold text-right` y formateados a dos decimales (`$0.00`).
+
+---
+
+## 5. Estándar de Modales y Formularios
+
+Todos los modales deben utilizar estrictamente el componente global `<Modal>` (`frontend/src/components/ui/Modal.tsx`) con la estructura simétrica:
 
 ```tsx
-<Toaster
-  position="top-right"
-  gutter={10}
-  containerStyle={{ top: 20, right: 20 }}
-  toastOptions={{
-    duration: 4000,
-    className: 'system-toast',
-    style: {
-      background: '#ffffff',
-      color: '#0f172a',
-      borderRadius: '12px',
-      fontSize: '0.88rem',
-      fontWeight: 500,
-      padding: '12px 18px',
-      border: '1px solid #e2e8f0',
-      boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12)',
-    },
-    success: {
-      style: { border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' },
-      iconTheme: { primary: '#10b981', secondary: '#ffffff' },
-    },
-    error: {
-      style: { border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' },
-      iconTheme: { primary: '#ef4444', secondary: '#ffffff' },
-    },
-  }}
-/>
+<Modal
+  isOpen={isOpen}
+  onClose={() => setIsOpen(false)}
+  title="Título del Modal"
+  maxWidth="3xl" // '2xl', '3xl', '4xl' según necesidad
+>
+  <form onSubmit={handleSubmit} onKeyDown={handleEnterNavigation} className="form-symmetrical">
+    {/* Sección 1: Datos Generales */}
+    <div className="form-section-title">1. Datos del Documento</div>
+    <div className="form-grid-symmetrical cols-3">
+      <div className="form-group">
+        <label className="form-label">Fecha *</label>
+        <input type="date" className="form-input" ... />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Correlativo / N° Partida</label>
+        <input
+          type="text"
+          className="form-input font-mono font-bold input-readonly"
+          disabled
+          readOnly
+          value={correlativo}
+        />
+      </div>
+    </div>
+
+    {/* Barra de Acciones */}
+    <div className="modal-actions">
+      <button type="button" className="btn-secundario" onClick={() => setIsOpen(false)}>
+        Cancelar
+      </button>
+      <button type="submit" className="btn-primario btn-icon-gap">
+        <CheckCircle2 size={16} />
+        <span>Guardar</span>
+      </button>
+    </div>
+  </form>
+</Modal>
+```
+
+### ❌ Anti-Patrones en Modales:
+- **NO** crear contenedores de modal manuales con `divs` crudos que provoquen botones desalineados o sombras fuera de lugar.
+- **NO** dejar campos correlativos automáticos como inputs editables. Deben ser `disabled readOnly` con clase `input-readonly`.
+
+---
+
+## 6. Patrón de Captura Rápida vs Listado Acumulado (Partidas / Facturas Continuas)
+
+Para formularios con ingreso de múltiples renglones (como Partidas Contables o Lotes de Facturas):
+
+### 1. Barra Superior de Captura Rápida (`.partida-quick-entry-card`):
+- Los campos de captura (`Cuenta Imputable`, `Concepto`, `Cargo/Debe`, `Abono/Haber` y botón `+ Agregar`) se ubican en **una sola fila superior compacta**.
+- **Flujo de teclado**: Presionar <kbd>Enter</kbd> salta secuencialmente entre campos. Al presionar <kbd>Enter</kbd> en el último campo o botón de agregar, se inserta el renglón y el foco vuelve automáticamente al selector de cuenta.
+
+### 2. Tabla Inferior de Renglones Acumulados (Texto Plano de Alta Densidad):
+- **PROHIBIDO** incrustar inputs de formulario (`<input>`) en cada celda de la tabla acumulada.
+- Los registros se muestran como **texto plano estilizado** en filas ultracompactas (`height: 28px`, `padding: 3px 10px`, clase `.tabla-renglones-compacta`).
+- **Código y Nombre en la misma línea**: `[Código] - [Nombre de la Cuenta]` de forma horizontal compacta.
+- Contenedor con scroll vertical (`max-height: 250px`, `overflow-y: auto`) para soportar partidas de 50 o más renglones con total fluidez.
+
+---
+
+## 7. Búsqueda Multi-Token e Insensible a Acentos
+
+Todos los selectores con búsqueda (`SearchableSelect`, autocompletado de cuentas, clientes, proveedores, catálogos) deben cumplir con búsqueda inteligente por palabras clave múltiples en cualquier orden y sin importar acentos:
+
+### Regla de Coincidencia Multi-Palabra:
+- Si el usuario busca `"raul sosa"`, el sistema **debe encontrar** `"Raúl Rafael Sosa Castellanos"`.
+- Utilizar la utilidad oficial `matchesSearchTokens`:
+
+```ts
+import { matchesSearchTokens } from '../../utils/searchUtils';
+
+// En filtros y autocompletados:
+const filtered = items.filter((item) =>
+  matchesSearchTokens([item.nombre, item.codigo, item.nit, item.nrc], searchQuery)
+);
+```
+
+### En el Backend:
+Las consultas con parámetro `search` deben separar la cadena en palabras individuales (`split(/\s+/)`) y generar cláusulas `AND (...)` para cada palabra:
+
+```ts
+if (search && search.trim()) {
+  const tokens = search.trim().split(/\s+/).filter(Boolean);
+  for (const token of tokens) {
+    const term = `%${token}%`;
+    conditions.push('(c.nom_cliente LIKE ? OR c.cod_cliente LIKE ? OR c.registro LIKE ?)');
+    queryParams.push(term, term, term);
+  }
+}
 ```
 
 ---
 
-## 7. Componentes Clave y Tablas de Datos
+## 8. Totales y Secciones de Balance Ligeras y Corporativas
 
-### Botones y Acciones
-- `.btn-primario`: Fondo azul corporativo `#2563eb`, texto blanco, sombra sutil.
-- `.btn-secundario`: Borde `#cbd5e1`, fondo blanco, texto `#334155`.
-- `.header-actions`: Contenedor flexible `display: flex; gap: 12px; align-items: center; flex-wrap: wrap;`.
+- **PROHIBIDO** usar fondos negros pesados (`#0f172a`), cajas oscuras saturadas o colores neón invasivos en los totales de modales.
+- Utilizar el diseño ligero corporativo (`.partida-balance-footer`):
+  - Fondo claro `#f8fafc`, borde sutil `#e2e8f0`, tarjetas blancas `#ffffff` con etiquetas pequeñas uppercase.
+  - Insignias tipo píldora suave (*soft pills*):
+    - **Cuadrada**: Fondo `#ecfdf5`, borde `#a7f3d0`, texto `#047857`.
+    - **Descuadrada**: Fondo `#fef2f2`, borde `#fecdd3`, texto `#b91c1c`.
 
-### Tablas Compactas (`.tabla-compacta`, `.tabla-anexo-mh`)
-- Encabezados oscuros o gris neutro (`#0f172a` o `#f1f5f9`), texto en negrita y uppercase pequeño.
-- Celdas con `white-space: nowrap !important;`, padding reducido `6px 10px`.
-- Valores monetarios alineados a la derecha (`font-family: monospace; font-weight: 600;`).
+---
+
+## 9. Formato Estricto de Fechas y Moneda
+
+- **Fechas en Tablas**: Siempre formateadas en formato estricto `DD/MM/YYYY` mediante `formatFechaDDMMYYYY()`.
+- **Valores Monetarios**: Siempre alineados a la derecha con tipografía monospace (`font-mono font-bold`), prefijo `$`, y dos decimales (`minimumFractionDigits: 2`).
+
+---
+
+## 10. Navegación Continua con Tecla `Enter`
+
+Todo formulario debe incluir `onKeyDown={handleEnterNavigation}`:
+- Salto automático al siguiente campo interactivo seleccionando el texto.
+- En botones `submit` o último campo, ejecuta el guardado directo.
+

@@ -8,6 +8,10 @@ import DashboardPage from './pages/control-iva/DashboardPage';
 import ProveedoresPage from './pages/control-iva/ProveedoresPage';
 import ReportesLibrosPage from './pages/control-iva/ReportesLibrosPage';
 import VentasIvaPage from './pages/control-iva/VentasIvaPage';
+import CatalogoCuentasPage from './pages/contabilidad/CatalogoCuentasPage';
+import PartidasContablesPage from './pages/contabilidad/PartidasContablesPage';
+import FirmasContablesPage from './pages/contabilidad/FirmasContablesPage';
+import CorrelativosContablesPage from './pages/contabilidad/CorrelativosContablesPage';
 import Login from './pages/Login';
 import VentasPage from './pages/VentasPage';
 
@@ -51,6 +55,43 @@ export default function App() {
           element={
             <RequireAuth>
               <ComprasPage />
+            </RequireAuth>
+          }
+        />
+        {/* Contabilidad Routes */}
+        <Route
+          path="/contabilidad"
+          element={<Navigate to="/contabilidad/partidas" replace />}
+        />
+        <Route
+          path="/contabilidad/partidas"
+          element={
+            <RequireAuth>
+              <PartidasContablesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/contabilidad/catalogo"
+          element={
+            <RequireAuth>
+              <CatalogoCuentasPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/contabilidad/correlativos"
+          element={
+            <RequireAuth>
+              <CorrelativosContablesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/contabilidad/firmas"
+          element={
+            <RequireAuth>
+              <FirmasContablesPage />
             </RequireAuth>
           }
         />
