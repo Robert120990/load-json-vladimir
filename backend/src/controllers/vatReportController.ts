@@ -93,11 +93,10 @@ export const getPlantillaOficialAnexo = asyncHandler(async (req: Request, res: R
         'FECHA DE EMISION',
         'CLASE DE DOCUMENTO',
         'TIPO DE DOCUMENTO',
-        'NUMERO DE RESOLUCION',
         'SERIE / SELLO DE RECEPCION',
         'NUMERO DE DOCUMENTO',
         'NUMERO DE CONTROL',
-        'NIT O NRC DEL CLIENTE',
+        'NIT',
         'NOMBRE DEL CLIENTE',
         'VENTAS EXENTAS',
         'VENTAS NO SUJETAS',
@@ -108,7 +107,7 @@ export const getPlantillaOficialAnexo = asyncHandler(async (req: Request, res: R
         'TOTAL VENTAS',
       ],
       ejemplo: [
-        '05/05/2026', '4 - DTE', 'CREDITO FISCAL', 'N/A', '2026DTE03M001P001RECEPCION001', '525C3F8F-F6DA-4D20-BBF2-04C46C7ED149',
+        '05/05/2026', '4 - DTE', 'CREDITO FISCAL', '2026DTE03M001P001RECEPCION001', '525C3F8F-F6DA-4D20-BBF2-04C46C7ED149',
         'DTE-03-M001P001-000000000010', '166944-9', 'ACOOPACCSAL. DE R.L.', 0, 0, 25.00, 3.25, 0, 0, 28.25,
       ],
     });

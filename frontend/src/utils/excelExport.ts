@@ -255,7 +255,14 @@ export function exportMhAnexoToCsv(rows: any[], tipo: string, periodo: string) {
     alert('No hay registros para exportar en este período.');
     return;
   }
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const cleanedRows = rows.map((r) => {
+    if (tipo === 'contribuyentes' && 'numero_resolucion' in r) {
+      const { numero_resolucion, ...rest } = r;
+      return rest;
+    }
+    return r;
+  });
+  const ws = XLSX.utils.json_to_sheet(cleanedRows);
   const csvContent = XLSX.utils.sheet_to_csv(ws, { FS: ';' });
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -273,7 +280,14 @@ export function exportMhAnexoToExcel(rows: any[], tipo: string, periodo: string)
     return;
   }
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const cleanedRows = rows.map((r) => {
+    if (tipo === 'contribuyentes' && 'numero_resolucion' in r) {
+      const { numero_resolucion, ...rest } = r;
+      return rest;
+    }
+    return r;
+  });
+  const ws = XLSX.utils.json_to_sheet(cleanedRows);
   XLSX.utils.book_append_sheet(wb, ws, `ANEXO_${tipo.toUpperCase()}`.slice(0, 31));
   XLSX.writeFile(wb, `ANEXO_MH_${tipo.toUpperCase()}_${periodo}.xlsx`);
 }

@@ -106,7 +106,7 @@ function formatAnexoCell(key: string, val: any): React.ReactNode {
     return <span className="font-mono text-xs text-primary">{String(val)}</span>;
   }
 
-  if (key === 'nit_o_nrc') {
+  if (key === 'nit_o_nrc' || key === 'nit') {
     return <span className="font-mono text-xs">{String(val)}</span>;
   }
 
