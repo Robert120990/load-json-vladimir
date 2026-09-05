@@ -13,12 +13,20 @@ import PartidasContablesPage from './pages/contabilidad/PartidasContablesPage';
 import FirmasContablesPage from './pages/contabilidad/FirmasContablesPage';
 import CorrelativosContablesPage from './pages/contabilidad/CorrelativosContablesPage';
 import ReportesContablesPage from './pages/contabilidad/ReportesContablesPage';
+import AsignacionEmpresasPage from './pages/admin/AsignacionEmpresasPage';
 import Login from './pages/Login';
 import VentasPage from './pages/VentasPage';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" replace />;
+}
+
+function RequireAdmin({ children }: { children: JSX.Element }) {
+  const usuarioStr = localStorage.getItem('usuario');
+  const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+  const isAdmin = usuario?.isAdmin ?? (usuario?.nom_usu?.trim().toUpperCase() === 'ADMIN');
+  return isAdmin ? children : <Navigate to="/dashboard" replace />;
 }
 
 export default function App() {
@@ -32,6 +40,20 @@ export default function App() {
           element={
             <RequireAuth>
               <Navigate to="/dashboard" replace />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={<Navigate to="/admin/asignacion-empresas" replace />}
+        />
+        <Route
+          path="/admin/asignacion-empresas"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AsignacionEmpresasPage />
+              </RequireAdmin>
             </RequireAuth>
           }
         />

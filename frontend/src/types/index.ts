@@ -10,6 +10,7 @@ export interface Usuario {
   nom_usu: string;
   desc_usu?: string | null;
   cod_emp?: number | null;
+  isAdmin?: boolean;
 }
 
 export interface LoginResponse {
@@ -34,6 +35,28 @@ export interface EmpresaOpcion {
 export interface SeleccionEmpresaResponse {
   token: string;
   usuario: Usuario;
+  empresa?: Empresa;
+}
+
+export interface AdminUserSummary {
+  nom_usu: string;
+  desc_usu: string | null;
+  total_empresas: number;
+  activas: number;
+}
+
+export interface CompanyAssignment {
+  cod_emp: number;
+  nom_emp: string;
+  nit: string | null;
+  reg_fiscal: string | null;
+  assigned: boolean;
+}
+
+export interface SaveAssignmentsResponse {
+  ok: boolean;
+  message: string;
+  count: number;
 }
 
 export interface DteSummary {

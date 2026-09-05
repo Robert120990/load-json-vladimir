@@ -34,3 +34,24 @@ export const obtenerEmpresa = asyncHandler(async (req: Request, res: Response) =
   const empresa = await companyService.getEmpresaPorCodEmp(usuario.cod_emp);
   res.json(empresa);
 });
+
+export const obtenerMisEmpresas = asyncHandler(async (req: Request, res: Response) => {
+  const usuario = req.usuario;
+  if (!usuario) throw new ApiError(401, 'Sesión no válida');
+
+  const empresas = await authService.getMyCompanies(usuario.nom_usu);
+  res.json(empresas);
+});
+
+export const cambiarEmpresa = asyncHandler(async (req: Request, res: Response) => {
+  const usuario = req.usuario;
+  if (!usuario) throw new ApiError(401, 'Sesión no válida');
+
+  const { codEmp } = req.body ?? {};
+  if (typeof codEmp !== 'number') {
+    throw new ApiError(400, 'codEmp es requerido y debe ser un número');
+  }
+
+  const resultado = await authService.switchCompany(usuario.nom_usu, usuario.cod_usu, codEmp);
+  res.json(resultado);
+});

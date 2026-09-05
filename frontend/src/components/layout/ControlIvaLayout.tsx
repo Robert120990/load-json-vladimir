@@ -14,6 +14,7 @@ import {
   PanelLeftOpen,
   PenTool,
   Receipt,
+  ShieldCheck,
   ShoppingCart,
   UploadCloud,
   Users,
@@ -23,6 +24,7 @@ import { obtenerEmpresa } from '../../api/auth';
 import { VERSION_APP } from '../../version';
 import type { Empresa, Usuario } from '../../types';
 import systemLogo from '../../assets/logo.png';
+import CompanySwitcher from './CompanySwitcher';
 
 interface ControlIvaLayoutProps {
   children: React.ReactNode;
@@ -38,6 +40,7 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
   });
 
   const usuario = JSON.parse(localStorage.getItem('usuario') ?? 'null') as Usuario | null;
+  const isAdmin = usuario?.isAdmin ?? (usuario?.nom_usu?.trim().toUpperCase() === 'ADMIN');
 
   useEffect(() => {
     obtenerEmpresa()
@@ -66,6 +69,20 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       ],
     },
+    ...(isAdmin
+      ? [
+          {
+            group: 'Administración',
+            items: [
+              {
+                path: '/admin/asignacion-empresas',
+                label: 'Asignación de Empresas',
+                icon: ShieldCheck,
+              },
+            ],
+          },
+        ]
+      : []),
     {
       group: 'Contabilidad',
       items: [
@@ -211,12 +228,18 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
 
             <div className="topbar-title">
               <span className="breadcrumb-module">
-                {location.pathname.startsWith('/contabilidad') ? 'Contabilidad' : 'Control IVA'}
+                {location.pathname.startsWith('/admin')
+                  ? 'Administración'
+                  : location.pathname.startsWith('/contabilidad')
+                  ? 'Contabilidad'
+                  : 'Control IVA'}
               </span>
               <span className="breadcrumb-separator">/</span>
               <span className="breadcrumb-page">
                 {location.pathname === '/dashboard'
                   ? 'Dashboard'
+                  : location.pathname.includes('/admin/asignacion-empresas')
+                  ? 'Asignación de Empresas'
                   : location.pathname.includes('/contabilidad/partidas')
                   ? 'Partidas Contables'
                   : location.pathname.includes('/contabilidad/catalogo')
@@ -247,12 +270,7 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
           </div>
 
           <div className="topbar-actions">
-            {empresa && (
-              <div className="topbar-empresa-badge" title={`${empresa.nom_emp || `Empresa #${empresa.cod_emp}`} (NIT: ${empresa.nit})`}>
-                <div className="topbar-empresa-nom">{empresa.nom_emp || `Empresa #${empresa.cod_emp}`}</div>
-                <div className="topbar-empresa-nit">NIT: {empresa.nit}</div>
-              </div>
-            )}
+            <CompanySwitcher currentEmpresa={empresa} />
             <button type="button" className="btn-secundario btn-sm" onClick={cerrarSesion}>
               Cerrar sesión
             </button>

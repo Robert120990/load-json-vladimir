@@ -13,6 +13,7 @@ export interface UsuarioAutenticado {
   nom_usu: string;
   desc_usu?: string | null;
   cod_emp: number | null;
+  isAdmin?: boolean;
 }
 
 export interface Empresa {

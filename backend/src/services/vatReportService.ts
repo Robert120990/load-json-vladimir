@@ -75,7 +75,9 @@ export async function getLibroCompras(
   const filas = purchaseRows.map((r, index) => {
     const exentas = Number(r.exentas_locales) || 0;
     const noSujetas = Number(r.no_sujetas) || 0;
-    const gravadas = Number(r.gravadas_locales) || 0;
+    const rebajas = Number(r.rebajas_y_devoluciones) || 0;
+    // Compra gravada local neta: el valor gravado menos la rebaja/devolución aplicada
+    const gravadas = Math.max(0, Number(((Number(r.gravadas_locales) || 0) - rebajas).toFixed(2)));
     const credito = Number(r.credito_fiscal) || 0;
     const anticipo = Number(r.anticipo_a_cuenta) || 0;
     const retenido = Number(r.iva_retenido) || 0;
@@ -98,7 +100,7 @@ export async function getLibroCompras(
     sumGravadasInternaciones += Number(r.gravadas_internaciones) || 0;
     sumRetencionTerceros += Number(r.retencion_a_terceros) || 0;
     sumComprasExcluidos += Number(r.compras_a_excluidos) || 0;
-    sumRebajasDevoluciones += Number(r.rebajas_y_devoluciones) || 0;
+    sumRebajasDevoluciones += rebajas;
 
     return {
       corr: index + 1,
@@ -119,19 +121,19 @@ export async function getLibroCompras(
 
   const cuadroResumen = {
     locales: {
-      exentas: totExentas,
-      gravadas: totGravadas,
-      rebajas: sumRebajasDevoluciones,
-      total: Number((totExentas + totGravadas - sumRebajasDevoluciones).toFixed(2)),
+      exentas: Number(totExentas.toFixed(2)),
+      gravadas: Number(totGravadas.toFixed(2)),
+      rebajas: Number(sumRebajasDevoluciones.toFixed(2)),
+      total: Number((totExentas + totGravadas + sumRebajasDevoluciones).toFixed(2)),
     },
     importaciones: {
-      exentas: sumExentasImportaciones,
-      gravadas: sumGravadasImportaciones,
+      exentas: Number(sumExentasImportaciones.toFixed(2)),
+      gravadas: Number(sumGravadasImportaciones.toFixed(2)),
       total: Number((sumExentasImportaciones + sumGravadasImportaciones).toFixed(2)),
     },
     internaciones: {
-      exentas: sumExentasInternaciones,
-      gravadas: sumGravadasInternaciones,
+      exentas: Number(sumExentasInternaciones.toFixed(2)),
+      gravadas: Number(sumGravadasInternaciones.toFixed(2)),
       total: Number((sumExentasInternaciones + sumGravadasInternaciones).toFixed(2)),
     },
     creditoFiscal: Number(totCreditoFiscal.toFixed(2)),
@@ -534,11 +536,11 @@ export async function getAnexoHacienda(
         c.exentas_locales as compras_exentas,
         c.exentas_internaciones as internaciones_exentas,
         c.exentas_importaciones as importaciones_exentas,
-        c.gravadas_locales as compras_gravadas,
+        (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0)) as compras_gravadas,
         c.gravadas_internaciones as internaciones_gravadas,
         c.gravadas_importaciones as importaciones_gravadas,
         c.credito_fiscal,
-        (c.exentas_locales + c.exentas_internaciones + c.exentas_importaciones + c.gravadas_locales + c.gravadas_internaciones + c.gravadas_importaciones + c.credito_fiscal) as total_compra
+        (c.exentas_locales + c.exentas_internaciones + c.exentas_importaciones + (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0)) + c.gravadas_internaciones + c.gravadas_importaciones + c.credito_fiscal) as total_compra
       FROM compras_iva c
       LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
       LEFT JOIN tipos_documento_compras tdc ON c.id_tipo_documento = tdc.id_tipo_documento

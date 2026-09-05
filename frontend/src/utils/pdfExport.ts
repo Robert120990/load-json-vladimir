@@ -235,10 +235,66 @@ export function exportVatBookToPdf(report: VatBookSummary) {
   }
 
   // Summary box & Signatures
-  const finalY = (doc as any).lastAutoTable?.finalY ?? 130;
+  let finalY = (doc as any).lastAutoTable?.finalY ?? 130;
+
+  if (report.libro === 'compras' && (report as any).cuadroResumen) {
+    const cr = (report as any).cuadroResumen;
+    let crStartY = finalY + 5;
+    if (crStartY + 50 > 190) {
+      doc.addPage();
+      crStartY = 15;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('CUADRO RESUMEN', 140, crStartY + 2, { align: 'center' });
+
+    autoTable(doc, {
+      head: [['', 'COMPRAS\nEXENTAS', 'COMPRAS\nGRAVADAS', 'REB. Y DEV.\nS/COMPRAS', 'TOTAL']],
+      body: [
+        ['LOCALES', formatMoney(cr.locales?.exentas), formatMoney(cr.locales?.gravadas), formatMoney(cr.locales?.rebajas), formatMoney(cr.locales?.total)],
+        ['IMPORTACIONES', formatMoney(cr.importaciones?.exentas), formatMoney(cr.importaciones?.gravadas), '$ -', formatMoney(cr.importaciones?.total)],
+        ['INTERNACIONES', formatMoney(cr.internaciones?.exentas), formatMoney(cr.internaciones?.gravadas), '$ -', formatMoney(cr.internaciones?.total)],
+        ['CREDITO FISCAL', '', formatMoney(cr.creditoFiscal), '', formatMoney(cr.creditoFiscal)],
+      ],
+      startY: crStartY + 4,
+      margin: { left: 55, right: 55 },
+      styles: { fontSize: 6.5, cellPadding: 1.2, halign: 'right' },
+      headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      columnStyles: {
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 32 },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 35, fontStyle: 'bold' },
+      },
+      theme: 'grid',
+    });
+
+    const crTable2Y = (doc as any).lastAutoTable?.finalY + 2;
+
+    autoTable(doc, {
+      head: [['ANTICIPO A\nCUENTA', 'I.V.A.\nPERCIBIDO', 'I.V.A.\nRETENIDO', 'RETENCION A\nTERCEROS', 'COMPRAS A\nEXCLUIDOS']],
+      body: [
+        [formatMoney(cr.anticipoACuenta), formatMoney(cr.ivaPercibido), formatMoney(cr.ivaRetenido), formatMoney(cr.retencionTerceros), formatMoney(cr.comprasExcluidos)],
+      ],
+      startY: crTable2Y,
+      margin: { left: 55, right: 55 },
+      styles: { fontSize: 6.5, cellPadding: 1.2, halign: 'center' },
+      headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      theme: 'grid',
+    });
+
+    finalY = (doc as any).lastAutoTable?.finalY ?? finalY;
+  }
 
   // Signatures on bottom
-  const sigY = Math.min(finalY + 35, 185);
+  let sigY = Math.min(finalY + 18, 185);
+  if (finalY + 22 > 195) {
+    doc.addPage();
+    sigY = 30;
+  }
+
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('ELABORADO POR', 40, sigY);

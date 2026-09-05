@@ -171,12 +171,12 @@ export async function getDashboardData(
         COUNT(*) as totalDocumentos,
         COALESCE(SUM(
           COALESCE(exentas_locales, 0) + COALESCE(exentas_importaciones, 0) + COALESCE(exentas_internaciones, 0) +
-          COALESCE(gravadas_locales, 0) + COALESCE(gravadas_importaciones, 0) + COALESCE(gravadas_internaciones, 0) +
+          (COALESCE(gravadas_locales, 0) - COALESCE(rebajas_y_devoluciones, 0)) + COALESCE(gravadas_importaciones, 0) + COALESCE(gravadas_internaciones, 0) +
           COALESCE(no_sujetas, 0) + COALESCE(credito_fiscal, 0) + COALESCE(anticipo_a_cuenta, 0) -
           COALESCE(iva_retenido, 0) + COALESCE(iva_percibido, 0)
         ), 0) as totalCompras,
         COALESCE(SUM(credito_fiscal), 0) as creditoFiscal,
-        COALESCE(SUM(gravadas_locales), 0) as gravadasLocales,
+        COALESCE(SUM(COALESCE(gravadas_locales, 0) - COALESCE(rebajas_y_devoluciones, 0)), 0) as gravadasLocales,
         COALESCE(SUM(exentas_locales), 0) as exentasLocales,
         COALESCE(SUM(iva_retenido), 0) as ivaRetenido,
         COALESCE(SUM(iva_percibido), 0) as ivaPercibido
@@ -222,7 +222,7 @@ export async function getDashboardData(
         periodo_mes,
         COALESCE(SUM(
           COALESCE(exentas_locales, 0) + COALESCE(exentas_importaciones, 0) + COALESCE(exentas_internaciones, 0) +
-          COALESCE(gravadas_locales, 0) + COALESCE(gravadas_importaciones, 0) + COALESCE(gravadas_internaciones, 0) +
+          (COALESCE(gravadas_locales, 0) - COALESCE(rebajas_y_devoluciones, 0)) + COALESCE(gravadas_importaciones, 0) + COALESCE(gravadas_internaciones, 0) +
           COALESCE(no_sujetas, 0) + COALESCE(credito_fiscal, 0) + COALESCE(anticipo_a_cuenta, 0) -
           COALESCE(iva_retenido, 0) + COALESCE(iva_percibido, 0)
         ), 0) as compras,
@@ -267,7 +267,7 @@ export async function getDashboardData(
         c.num_control,
         COALESCE(p.nom_proveedor, c.cod_proveedor) as nom_proveedor,
         ROUND(
-          COALESCE(c.exentas_locales, 0) + COALESCE(c.gravadas_locales, 0) + COALESCE(c.credito_fiscal, 0) -
+          COALESCE(c.exentas_locales, 0) + (COALESCE(c.gravadas_locales, 0) - COALESCE(c.rebajas_y_devoluciones, 0)) + COALESCE(c.credito_fiscal, 0) -
           COALESCE(c.iva_retenido, 0) + COALESCE(c.iva_percibido, 0)
         , 2) as total,
         c.credito_fiscal

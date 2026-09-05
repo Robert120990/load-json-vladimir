@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes';
 import controlIvaRoutes from './routes/controlIva.routes';
 import dteRoutes from './routes/dte.routes';
 import accountingRoutes from './routes/accounting.routes';
+import adminRoutes from './routes/admin.routes';
 
 import { BACKEND_VERSION } from './version';
 
@@ -24,6 +25,7 @@ app.get('/api/version', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/dte', dteRoutes);
 app.use('/api/control-iva', controlIvaRoutes);
 app.use('/api/accounting', accountingRoutes);

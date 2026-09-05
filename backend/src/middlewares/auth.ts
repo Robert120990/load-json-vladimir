@@ -6,6 +6,7 @@ interface TokenPayload {
   cod_usu: number;
   nom_usu: string;
   cod_emp: number | null;
+  isAdmin?: boolean;
 }
 
 export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
@@ -24,6 +25,7 @@ export function authMiddleware(req: Request, _res: Response, next: NextFunction)
       cod_usu: payload.cod_usu,
       nom_usu: payload.nom_usu,
       cod_emp: payload.cod_emp,
+      isAdmin: payload.isAdmin ?? (payload.nom_usu?.trim().toUpperCase() === 'ADMIN'),
     };
     next();
   } catch {
