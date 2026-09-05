@@ -81,6 +81,8 @@ const COMPRAS_COLS = [
 const VENTAS_TABLA = 'ventas_iva';
 const COMPRAS_TABLA = 'compras_iva';
 const CODIGO_IVA = '20';
+const CODIGO_FOVIAL = 'D1';
+const CODIGO_COTRANS = 'C8';
 
 export function parseDte(raw: string): DteJson {
   const parsed: unknown = JSON.parse(raw);
@@ -184,6 +186,25 @@ export function extraerIva(dte: DteJson): number {
   const tributos = dte.resumen?.tributos ?? [];
   const iva = tributos.find((t) => String(t.codigo ?? '').trim() === CODIGO_IVA);
   return iva?.valor ?? 0;
+}
+
+/**
+ * Extracts FOVIAL (D1) and COTRANS (C8) fuel tax values from DTE summary tributes.
+ */
+export function extraerFovialCotrans(dte: DteJson): number {
+  const tributos = dte.resumen?.tributos ?? [];
+  return tributos
+    .filter((t) => {
+      const codigo = String(t.codigo ?? '').trim().toUpperCase();
+      const descripcion = String(t.descripcion ?? '').trim().toUpperCase();
+      return (
+        codigo === CODIGO_FOVIAL ||
+        codigo === CODIGO_COTRANS ||
+        descripcion.includes('FOVIAL') ||
+        descripcion.includes('COTRANS')
+      );
+    })
+    .reduce((sum, t) => sum + (Number(t.valor) || 0), 0);
 }
 
 export async function obtenerLlave(codEmp: number): Promise<string> {
@@ -311,9 +332,13 @@ function mapearFila(
   const periodoAno = periodoCompras?.anio ?? null;
   const periodoMes = periodoCompras?.mes ?? null;
 
+  // Add FOVIAL and COTRANS fuel taxes to local exempt purchases (exentas_locales)
+  const fovialCotrans = extraerFovialCotrans(dte);
+  const exentasLocales = Number(((resumen.totalExenta ?? 0) + fovialCotrans).toFixed(2));
+
   return [
     codEmp, llave, fecha, tipoDocumento, documento, codContraparte,
-    resumen.totalExenta ?? 0, 0, 0, resumen.totalGravada ?? 0, 0, 0,
+    exentasLocales, 0, 0, resumen.totalGravada ?? 0, 0, 0,
     resumen.totalNoSuj ?? 0, extraerIva(dte), 0, resumen.ivaRete1 ?? 0,
     resumen.ivaPerci1 ?? 0, 0, 0, resumen.totalDescu ?? 0, 0, 0,
     periodoAno, periodoMes, '01', dte.emisor?.codPuntoVenta ?? '',
