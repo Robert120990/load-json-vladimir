@@ -207,6 +207,25 @@ export function extraerFovialCotrans(dte: DteJson): number {
     .reduce((sum, t) => sum + (Number(t.valor) || 0), 0);
 }
 
+/**
+ * Extracts total purchase discounts to record gross taxable purchases.
+ */
+export function extraerDescuentoCompras(dte: DteJson): number {
+  const resumen = dte.resumen;
+  if ((Number(resumen?.totalDescu) || 0) > 0) {
+    return Number((Number(resumen?.totalDescu) || 0).toFixed(2));
+  }
+
+  if (Array.isArray(dte.cuerpoDocumento)) {
+    const suma = dte.cuerpoDocumento.reduce((acc, item) => acc + (Number(item.montoDescu) || 0), 0);
+    if (suma > 0) {
+      return Number(suma.toFixed(2));
+    }
+  }
+
+  return 0;
+}
+
 export async function obtenerLlave(codEmp: number): Promise<string> {
   const [rows] = await pool.query('CALL devolver_correlativo_compra(@out)');
   const conjuntos = rows as Array<Array<{ corr_compra: number }>>;
@@ -336,11 +355,15 @@ function mapearFila(
   const fovialCotrans = extraerFovialCotrans(dte);
   const exentasLocales = Number(((resumen.totalExenta ?? 0) + fovialCotrans).toFixed(2));
 
+  // Store gross taxable purchases so that: Net Taxable = gravadas_locales - rebajas_y_devoluciones
+  const descuento = extraerDescuentoCompras(dte);
+  const gravadasLocales = Number(((resumen.totalGravada ?? 0) + descuento).toFixed(2));
+
   return [
     codEmp, llave, fecha, tipoDocumento, documento, codContraparte,
-    exentasLocales, 0, 0, resumen.totalGravada ?? 0, 0, 0,
+    exentasLocales, 0, 0, gravadasLocales, 0, 0,
     resumen.totalNoSuj ?? 0, extraerIva(dte), 0, resumen.ivaRete1 ?? 0,
-    resumen.ivaPerci1 ?? 0, 0, 0, resumen.totalDescu ?? 0, 0, 0,
+    resumen.ivaPerci1 ?? 0, 0, 0, descuento, 0, 0,
     periodoAno, periodoMes, '01', dte.emisor?.codPuntoVenta ?? '',
     obtenerNumeroControl(dte),
     obtenerSelloRecibido(dte),

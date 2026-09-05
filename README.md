@@ -57,10 +57,10 @@ npm run dev        # http://localhost:5173  (proxy /api -> localhost:4000)
 | `id_tipo_documento` | `identificacion.tipoDte` |
 | `documento` | `codigoGeneracion` |
 | `cod_cliente` / `cod_proveedor` | `receptor.nit` / `emisor.nit` (fallback `nrc`) |
-| gravadas / exentas / no_sujetas | `resumen.totalGravada` / `totalExenta` / `totalNoSuj` |
+| gravadas / exentas / no_sujetas | `resumen.totalGravada` / `totalExenta` / `totalNoSuj` (en compras, a `gravadas_locales` se le suma el descuento para guardar el valor bruto antes de rebajas) |
 | debito/credito fiscal | Tributo IVA (`codigo: "20"`) en `resumen.tributos` |
 | `iva_retenido` / `iva_percibido` | `resumen.ivaRete1` / `resumen.ivaPerci1` |
-| `rebajas_y_devoluciones` | `resumen.totalDescu` |
+| `rebajas_y_devoluciones` | `resumen.totalDescu` (suma de descuentos aplicados a la compra) |
 | `serie` (ventas) / `sello_recepcion` (compras) | `selloRecibido` del JSON |
 | `num_control` | `identificacion.numeroControl` |
 | `id_sucursal` / `cod_sucursal` | `'01'` fijo |
