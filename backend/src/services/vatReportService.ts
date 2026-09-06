@@ -531,7 +531,7 @@ export async function getAnexoHacienda(
         c.documento as numero_documento,
         COALESCE(c.num_control, '') as numero_control,
         COALESCE(c.sello_recepcion, '') as sello_recepcion,
-        IF(REPLACE(REPLACE(IFNULL(p.nit_proveedor, ''), '-', ''), ' ', '') != '', p.nit_proveedor, IFNULL(NULLIF(p.registro, ''), c.cod_proveedor)) as nit_o_nrc,
+        IF(REPLACE(REPLACE(IFNULL(p.registro, ''), '-', ''), ' ', '') != '', p.registro, IFNULL(NULLIF(p.nit_proveedor, ''), c.cod_proveedor)) as nit,
         COALESCE(p.nom_proveedor, 'PROVEEDOR VARIOS') as nombre,
         c.exentas_locales as compras_exentas,
         c.exentas_internaciones as internaciones_exentas,

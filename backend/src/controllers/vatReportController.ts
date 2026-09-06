@@ -66,7 +66,7 @@ export const getPlantillaOficialAnexo = asyncHandler(async (req: Request, res: R
         'NUMERO DE DOCUMENTO',
         'NUMERO DE CONTROL',
         'SELLO DE RECEPCION',
-        'NIT O NRC DEL PROVEEDOR',
+        'NIT',
         'NOMBRE DEL PROVEEDOR',
         'COMPRAS INTERNAS EXENTAS',
         'INTERNACIONES EXENTAS',
