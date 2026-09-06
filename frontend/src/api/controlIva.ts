@@ -4,6 +4,7 @@ import type {
   Client,
   Department,
   DocumentType,
+  FirmaIva,
   Municipality,
   PaginatedResult,
   PurchaseIva,
@@ -278,3 +279,20 @@ export async function fetchDashboardData(params?: {
   });
   return data;
 }
+
+// Firmas Libros de IVA
+export async function obtenerFirmasIva(): Promise<FirmaIva[]> {
+  const { data } = await api.get<FirmaIva[]>('/control-iva/firmas');
+  return data;
+}
+
+export async function guardarFirmasIva(firmas: FirmaIva[]): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/control-iva/firmas', { firmas });
+  return data;
+}
+
+export async function copiarFirmasDesdeContabilidad(): Promise<FirmaIva[]> {
+  const { data } = await api.get<FirmaIva[]>('/control-iva/firmas/copiar-contabilidad');
+  return data;
+}
+

@@ -197,6 +197,13 @@ export interface VatTaxpayerBookRow {
   ventasTotales: number;
 }
 
+export interface FirmaIva {
+  id_firma: number;
+  nom_firma: string;
+  puesto: string;
+  cod_emp?: number;
+}
+
 export interface VatBookSummary {
   libro: 'compras' | 'consumidor_final' | 'contribuyentes';
   empresa: {
@@ -214,7 +221,7 @@ export interface VatBookSummary {
   filas: VatPurchaseBookRow[] | VatFinalConsumerBookRow[] | VatTaxpayerBookRow[];
   totales: Record<string, number>;
   cuadroResumen: Record<string, any>;
-  firmas: {
+  firmas: AccountingSignature[] | {
     elaboradoPor: string;
     revisadoPor: string;
   };
@@ -274,7 +281,7 @@ export interface TaxSettlementSummary {
     totalPagoCuentaAPagar: number;
     totalPagarFisco: number;
   };
-  firmas: {
+  firmas: AccountingSignature[] | {
     elaboradoPor: string;
     revisadoPor: string;
   };

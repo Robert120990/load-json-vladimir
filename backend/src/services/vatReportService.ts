@@ -1,6 +1,6 @@
 import { pool } from '../config/db';
 import { getEmpresaPorCodEmp } from './companyService';
-import { getFirmasConta } from './catalogsService';
+import { getFirmasIva } from './vatSignaturesService';
 import type { VatBookSummary, TaxSettlementSummary } from '../types/controlIva';
 
 const MONTH_NAMES = [
@@ -14,7 +14,7 @@ export async function getLibroCompras(
   month: number,
 ): Promise<VatBookSummary> {
   const empresa = await getEmpresaPorCodEmp(codEmp);
-  const firmas = await getFirmasConta(codEmp);
+  const firmas = await getFirmasIva(codEmp);
 
   const [rows] = await pool.query(
     `SELECT 
@@ -171,10 +171,7 @@ export async function getLibroCompras(
       totalCompras: Number(totComprasTotal.toFixed(2)),
     },
     cuadroResumen,
-    firmas: {
-      elaboradoPor: firmas[0]?.nom_firma || 'Administrador del Sistema',
-      revisadoPor: firmas[1]?.nom_firma || 'RAMIRO A. HENRIQUEZ',
-    },
+    firmas,
   };
 }
 
@@ -184,7 +181,7 @@ export async function getLibroConsumidorFinal(
   month: number,
 ): Promise<VatBookSummary> {
   const empresa = await getEmpresaPorCodEmp(codEmp);
-  const firmas = await getFirmasConta(codEmp);
+  const firmas = await getFirmasIva(codEmp);
 
   // Consumidor final sales: id_tipo_documento IN ('01', '02', '04')
   const [rows] = await pool.query(
@@ -332,10 +329,7 @@ export async function getLibroConsumidorFinal(
       ventasCuentasTerceros: Number(totTerceros.toFixed(2)),
     },
     cuadroResumen,
-    firmas: {
-      elaboradoPor: firmas[0]?.nom_firma || 'Administrador del Sistema',
-      revisadoPor: firmas[1]?.nom_firma || 'RAMIRO A. HENRIQUEZ',
-    },
+    firmas,
   };
 }
 
@@ -345,7 +339,7 @@ export async function getLibroContribuyentes(
   month: number,
 ): Promise<VatBookSummary> {
   const empresa = await getEmpresaPorCodEmp(codEmp);
-  const firmas = await getFirmasConta(codEmp);
+  const firmas = await getFirmasIva(codEmp);
 
   // Contribuyentes: id_tipo_documento IN ('03', '05', '07') (Crédito Fiscal, Comprobante de Liquidación Contribuyente, Nota de Crédito)
   const [rows] = await pool.query(
@@ -509,10 +503,7 @@ export async function getLibroContribuyentes(
       ventasTotales: Number(totVentasTotales.toFixed(2)),
     },
     cuadroResumen,
-    firmas: {
-      elaboradoPor: firmas[0]?.nom_firma || 'Administrador del Sistema',
-      revisadoPor: firmas[1]?.nom_firma || 'RAMIRO A. HENRIQUEZ',
-    },
+    firmas,
   };
 }
 
@@ -618,7 +609,7 @@ export async function getLiquidacionImpuestos(
   month: number,
 ): Promise<TaxSettlementSummary> {
   const empresa = await getEmpresaPorCodEmp(codEmp);
-  const firmas = await getFirmasConta(codEmp);
+  const firmas = await getFirmasIva(codEmp);
 
   const compras = await getLibroCompras(codEmp, year, month);
   const contribuyentes = await getLibroContribuyentes(codEmp, year, month);
@@ -724,9 +715,6 @@ export async function getLiquidacionImpuestos(
       totalPagoCuentaAPagar,
       totalPagarFisco,
     },
-    firmas: {
-      elaboradoPor: firmas[0]?.nom_firma || 'Administrador del Sistema',
-      revisadoPor: firmas[1]?.nom_firma || 'RAMIRO A. HENRIQUEZ',
-    },
+    firmas,
   };
 }

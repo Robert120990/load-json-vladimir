@@ -7,6 +7,7 @@ import ComprasIvaPage from './pages/control-iva/ComprasIvaPage';
 import DashboardPage from './pages/control-iva/DashboardPage';
 import ProveedoresPage from './pages/control-iva/ProveedoresPage';
 import ReportesLibrosPage from './pages/control-iva/ReportesLibrosPage';
+import FirmasIvaPage from './pages/control-iva/FirmasIvaPage';
 import VentasIvaPage from './pages/control-iva/VentasIvaPage';
 import CatalogoCuentasPage from './pages/contabilidad/CatalogoCuentasPage';
 import PartidasContablesPage from './pages/contabilidad/PartidasContablesPage';
@@ -168,6 +169,14 @@ export default function App() {
           element={
             <RequireAuth>
               <ReportesLibrosPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/control-iva/firmas"
+          element={
+            <RequireAuth>
+              <FirmasIvaPage />
             </RequireAuth>
           }
         />

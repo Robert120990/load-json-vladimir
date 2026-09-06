@@ -113,6 +113,36 @@ function formatAnexoCell(key: string, val: any): React.ReactNode {
   return <span>{String(val)}</span>;
 }
 
+function getSignaturesForDisplay(firmas: any): Array<{ id_firma?: number; nom_firma: string; puesto: string }> {
+  if (Array.isArray(firmas) && firmas.length > 0) {
+    const valid = firmas.filter(
+      (f: any) => f && f.nom_firma && f.nom_firma.trim() !== '' && f.nom_firma.trim() !== '.'
+    );
+    if (valid.length > 0) {
+      return valid;
+    }
+    return firmas.slice(0, 3).map((f: any, idx: number) => ({
+      id_firma: f.id_firma || idx + 1,
+      nom_firma: '',
+      puesto: f.puesto || (idx === 0 ? 'Representante Legal' : idx === 1 ? 'Auditor Externo' : 'Contador General'),
+    }));
+  }
+  if (firmas && typeof firmas === 'object') {
+    const res = [];
+    if (firmas.revisadoPor) {
+      res.push({ id_firma: 1, nom_firma: firmas.revisadoPor, puesto: 'Representante Legal' });
+    }
+    if (firmas.elaboradoPor) {
+      res.push({ id_firma: 3, nom_firma: firmas.elaboradoPor, puesto: 'Contador General' });
+    }
+    if (res.length > 0) return res;
+  }
+  return [
+    { id_firma: 1, nom_firma: '', puesto: 'Representante Legal' },
+    { id_firma: 3, nom_firma: '', puesto: 'Contador General' },
+  ];
+}
+
 export default function ReportesLibrosPage() {
   const now = new Date();
   const [tipoReporte, setTipoReporte] = useState<TipoReporte>('compras');
@@ -668,17 +698,16 @@ export default function ReportesLibrosPage() {
               </div>
 
               {/* Signatures */}
-              <div className="report-signatures">
-                <div className="sig-block">
-                  <div className="sig-line"></div>
-                  <div className="sig-name">{liquidacion.firmas.elaboradoPor || 'CONTADOR GENERAL'}</div>
-                  <div className="sig-role">Firma y Sello</div>
-                </div>
-                <div className="sig-block">
-                  <div className="sig-line"></div>
-                  <div className="sig-name">{liquidacion.firmas.revisadoPor || 'REPRESENTANTE LEGAL / AUDITOR'}</div>
-                  <div className="sig-role">Firma y Sello</div>
-                </div>
+              <div className="report-signatures-box">
+                {getSignaturesForDisplay(liquidacion.firmas).map((f, idx) => (
+                  <div className="signature-col" key={f.id_firma || idx}>
+                    <div className="signature-line"></div>
+                    <div className="signature-name font-bold">
+                      {f.nom_firma || '___________________________'}
+                    </div>
+                    <div className="signature-label">{f.puesto || 'Firma Autorizada'}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1112,18 +1141,17 @@ export default function ReportesLibrosPage() {
                 )}
               </div>
 
-              {/* Signatures Box (Elaborado por / Revisado por) */}
+              {/* Signatures Box from Firmas de IVA */}
               <div className="report-signatures-box">
-                <div className="signature-col">
-                  <div className="signature-line"></div>
-                  <div className="signature-label">ELABORADO POR</div>
-                  <div className="signature-name">{reporte.firmas.elaboradoPor}</div>
-                </div>
-                <div className="signature-col">
-                  <div className="signature-line"></div>
-                  <div className="signature-label">REVISADO POR</div>
-                  <div className="signature-name">{reporte.firmas.revisadoPor}</div>
-                </div>
+                {getSignaturesForDisplay(reporte.firmas).map((f, idx) => (
+                  <div className="signature-col" key={f.id_firma || idx}>
+                    <div className="signature-line"></div>
+                    <div className="signature-name font-bold">
+                      {f.nom_firma || '___________________________'}
+                    </div>
+                    <div className="signature-label">{f.puesto || 'Firma Autorizada'}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

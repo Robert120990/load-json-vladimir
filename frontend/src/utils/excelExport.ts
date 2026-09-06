@@ -1,6 +1,36 @@
 import * as XLSX from 'xlsx';
 import type { VatBookSummary, TaxSettlementSummary } from '../types/controlIva';
 
+function getValidVatSignaturesForExcel(firmasRaw: any): Array<{ id_firma?: number; nom_firma: string; puesto: string }> {
+  if (Array.isArray(firmasRaw) && firmasRaw.length > 0) {
+    const valid = firmasRaw.filter(
+      (f: any) => f && f.nom_firma && f.nom_firma.trim() !== '' && f.nom_firma.trim() !== '.'
+    );
+    if (valid.length > 0) {
+      return valid;
+    }
+    return firmasRaw.slice(0, 3).map((f: any, idx: number) => ({
+      id_firma: f.id_firma || idx + 1,
+      nom_firma: '',
+      puesto: f.puesto || (idx === 0 ? 'Representante Legal' : idx === 1 ? 'Auditor Externo' : 'Contador General'),
+    }));
+  }
+  if (firmasRaw && typeof firmasRaw === 'object') {
+    const res = [];
+    if (firmasRaw.revisadoPor) {
+      res.push({ id_firma: 1, nom_firma: firmasRaw.revisadoPor, puesto: 'Representante Legal' });
+    }
+    if (firmasRaw.elaboradoPor) {
+      res.push({ id_firma: 3, nom_firma: firmasRaw.elaboradoPor, puesto: 'Contador General' });
+    }
+    if (res.length > 0) return res;
+  }
+  return [
+    { id_firma: 1, nom_firma: '', puesto: 'Representante Legal' },
+    { id_firma: 3, nom_firma: '', puesto: 'Contador General' },
+  ];
+}
+
 export function exportVatBookToExcel(report: VatBookSummary) {
   const wb = XLSX.utils.book_new();
 
@@ -232,8 +262,28 @@ export function exportVatBookToExcel(report: VatBookSummary) {
   }
 
   // Signatures
+  const validSignatures = getValidVatSignaturesForExcel(report.firmas);
   allRows.push([]);
-  allRows.push(['ELABORADO POR:', report.firmas.elaboradoPor, '', 'REVISADO POR:', report.firmas.revisadoPor]);
+  allRows.push([]);
+
+  const lineRow: any[] = [];
+  const nameRow: any[] = [];
+  const puestoRow: any[] = [];
+
+  validSignatures.forEach((f, idx) => {
+    if (idx > 0) {
+      lineRow.push('', '');
+      nameRow.push('', '');
+      puestoRow.push('', '');
+    }
+    lineRow.push('_______________________________');
+    nameRow.push(f.nom_firma || '___________________________');
+    puestoRow.push(f.puesto || 'Firma Autorizada');
+  });
+
+  allRows.push(lineRow);
+  allRows.push(nameRow);
+  allRows.push(puestoRow);
 
   const ws = XLSX.utils.aoa_to_sheet(allRows);
 
@@ -346,8 +396,27 @@ export function exportTaxSettlementToExcel(report: TaxSettlementSummary) {
     ['Total Pago a Cuenta de Renta a Pagar en el Período', report.resumenGeneral.totalPagoCuentaAPagar],
     ['TOTAL GENERAL A PAGAR AL MINISTERIO DE HACIENDA (MH)', report.resumenGeneral.totalPagarFisco],
     [],
-    ['ELABORADO POR:', report.firmas.elaboradoPor, '', 'REVISADO POR:', report.firmas.revisadoPor],
   ];
+
+  const validSignatures = getValidVatSignaturesForExcel(report.firmas);
+  const lineRow: any[] = [];
+  const nameRow: any[] = [];
+  const puestoRow: any[] = [];
+
+  validSignatures.forEach((f, idx) => {
+    if (idx > 0) {
+      lineRow.push('');
+      nameRow.push('');
+      puestoRow.push('');
+    }
+    lineRow.push('_______________________________');
+    nameRow.push(f.nom_firma || '___________________________');
+    puestoRow.push(f.puesto || 'Firma Autorizada');
+  });
+
+  rows.push(lineRow);
+  rows.push(nameRow);
+  rows.push(puestoRow);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{ wch: 65 }, { wch: 25 }, { wch: 30 }];

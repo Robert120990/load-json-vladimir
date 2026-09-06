@@ -2,6 +2,65 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { VatBookSummary, TaxSettlementSummary } from '../types/controlIva';
 
+function getValidVatSignatures(firmasRaw: any): Array<{ id_firma?: number; nom_firma: string; puesto: string }> {
+  if (Array.isArray(firmasRaw) && firmasRaw.length > 0) {
+    const valid = firmasRaw.filter(
+      (f: any) => f && f.nom_firma && f.nom_firma.trim() !== '' && f.nom_firma.trim() !== '.'
+    );
+    if (valid.length > 0) {
+      return valid;
+    }
+    return firmasRaw.slice(0, 3).map((f: any, idx: number) => ({
+      id_firma: f.id_firma || idx + 1,
+      nom_firma: '',
+      puesto: f.puesto || (idx === 0 ? 'Representante Legal' : idx === 1 ? 'Auditor Externo' : 'Contador General'),
+    }));
+  }
+  if (firmasRaw && typeof firmasRaw === 'object') {
+    const res = [];
+    if (firmasRaw.revisadoPor) {
+      res.push({ id_firma: 1, nom_firma: firmasRaw.revisadoPor, puesto: 'Representante Legal' });
+    }
+    if (firmasRaw.elaboradoPor) {
+      res.push({ id_firma: 3, nom_firma: firmasRaw.elaboradoPor, puesto: 'Contador General' });
+    }
+    if (res.length > 0) return res;
+  }
+  return [
+    { id_firma: 1, nom_firma: '', puesto: 'Representante Legal' },
+    { id_firma: 3, nom_firma: '', puesto: 'Contador General' },
+  ];
+}
+
+function drawVatSignatures(doc: jsPDF, firmasRaw: any, pageWidth: number, currentY: number) {
+  const firmas = getValidVatSignatures(firmasRaw);
+  const numFirmas = Math.min(firmas.length, 3);
+  const colWidth = pageWidth / (numFirmas + 1);
+  const lineWidth = numFirmas === 3 ? 24 : 32;
+
+  doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+
+  firmas.slice(0, 3).forEach((firma, index) => {
+    const centerX = colWidth * (index + 1);
+    const lineStartX = centerX - lineWidth;
+    const lineEndX = centerX + lineWidth;
+
+    // Line
+    doc.setDrawColor(80, 80, 80);
+    doc.setLineWidth(0.3);
+    doc.line(lineStartX, currentY + 8, lineEndX, currentY + 8);
+
+    // Name
+    doc.setFont('helvetica', 'bold');
+    doc.text(firma.nom_firma || '___________________________', centerX, currentY + 13, { align: 'center' });
+
+    // Puesto / Cargo
+    doc.setFont('helvetica', 'normal');
+    doc.text(firma.puesto || 'Firma Autorizada', centerX, currentY + 17, { align: 'center' });
+  });
+}
+
 export function exportVatBookToPdf(report: VatBookSummary) {
   const doc = new jsPDF({
     orientation: 'landscape',
@@ -289,23 +348,13 @@ export function exportVatBookToPdf(report: VatBookSummary) {
   }
 
   // Signatures on bottom
-  let sigY = Math.min(finalY + 18, 185);
-  if (finalY + 22 > 195) {
+  let sigY = Math.min(finalY + 18, 180);
+  if (finalY + 25 > 195) {
     doc.addPage();
-    sigY = 30;
+    sigY = 25;
   }
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ELABORADO POR', 40, sigY);
-  doc.text('REVISADO POR', 120, sigY);
-
-  doc.setFont('helvetica', 'normal');
-  doc.line(20, sigY + 8, 80, sigY + 8);
-  doc.text(report.firmas.elaboradoPor, 25, sigY + 12);
-
-  doc.line(100, sigY + 8, 160, sigY + 8);
-  doc.text(report.firmas.revisadoPor, 105, sigY + 12);
+  drawVatSignatures(doc, report.firmas, 279.4, sigY);
 
   const fileName = `${titleBook.replace(/\s+/g, '_')}_${report.periodo.nombreMes}_${report.periodo.anio}.pdf`;
   doc.save(fileName);
@@ -434,18 +483,13 @@ export function exportTaxSettlementToPdf(report: TaxSettlementSummary) {
   });
 
   // Signatures on bottom
-  const sigY = Math.min((doc as any).lastAutoTable?.finalY + 22, 250);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ELABORADO POR', 45, sigY);
-  doc.text('REVISADO POR', 135, sigY);
+  let sigY = Math.min((doc as any).lastAutoTable?.finalY + 20, 245);
+  if ((doc as any).lastAutoTable?.finalY + 28 > 260) {
+    doc.addPage();
+    sigY = 25;
+  }
 
-  doc.setFont('helvetica', 'normal');
-  doc.line(25, sigY + 8, 85, sigY + 8);
-  doc.text(report.firmas.elaboradoPor, 30, sigY + 12);
-
-  doc.line(115, sigY + 8, 175, sigY + 8);
-  doc.text(report.firmas.revisadoPor, 120, sigY + 12);
+  drawVatSignatures(doc, report.firmas, 215.9, sigY);
 
   const fileName = `LIQUIDACION_IMPUESTOS_${report.periodo.nombreMes}_${report.periodo.anio}.pdf`;
   doc.save(fileName);

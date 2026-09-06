@@ -6,12 +6,18 @@ import * as purchaseIvaController from '../controllers/purchaseIvaController';
 import * as saleIvaController from '../controllers/saleIvaController';
 import * as supplierController from '../controllers/supplierController';
 import * as vatReportController from '../controllers/vatReportController';
+import * as vatSignaturesController from '../controllers/vatSignaturesController';
 import { authMiddleware } from '../middlewares/auth';
 
 const router = Router();
 
 // Apply authentication middleware to all Control IVA routes
 router.use(authMiddleware);
+
+// Firmas Libros de IVA
+router.get('/firmas', vatSignaturesController.getVatSignatures);
+router.post('/firmas', vatSignaturesController.saveVatSignatures);
+router.get('/firmas/copiar-contabilidad', vatSignaturesController.copyFromAccounting);
 
 // Dashboard
 router.get('/dashboard', dashboardController.getDashboardData);

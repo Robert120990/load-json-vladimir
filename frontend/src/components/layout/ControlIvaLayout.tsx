@@ -110,6 +110,11 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
           label: 'Libros de IVA y Anexos',
           icon: BookOpen,
         },
+        {
+          path: '/control-iva/firmas',
+          label: 'Firmas de Libros de IVA',
+          icon: PenTool,
+        },
       ],
     },
     {
