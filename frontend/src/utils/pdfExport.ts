@@ -95,7 +95,9 @@ export function exportVatBookToPdf(report: VatBookSummary) {
   doc.text(`SUCURSAL : ${report.sucursal}`, 140, 32, { align: 'center' });
 
   const formatMoney = (val: number | undefined) =>
-    val && val !== 0 ? `$ ${Number(val).toFixed(2)}` : '$ -';
+    val !== undefined && val !== null && Number(val) !== 0
+      ? `$ ${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : '$ -';
 
   if (report.libro === 'compras') {
     const tableColumns = [
@@ -130,11 +132,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
 
     // Totals row
     tableRows.push([
-      'TOTALES',
-      '',
-      '',
-      '',
-      '',
+      { content: 'TOTALES', colSpan: 5, styles: { halign: 'center', fontStyle: 'bold' } },
       formatMoney(report.totales.comprasExentas),
       formatMoney(report.totales.noSujetas),
       formatMoney(report.totales.comprasGravadas),
@@ -194,11 +192,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
     ]);
 
     tableRows.push([
-      'TOTALES',
-      '',
-      '',
-      '',
-      '',
+      { content: 'TOTALES', colSpan: 5, styles: { halign: 'center', fontStyle: 'bold' } },
       formatMoney(report.totales.ventasExentas),
       formatMoney(report.totales.ventasNoSujetas),
       formatMoney(report.totales.gravadasLocales),
@@ -257,11 +251,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
     ]);
 
     tableRows.push([
-      'TOTALES',
-      '',
-      '',
-      '',
-      '',
+      { content: 'TOTALES', colSpan: 5, styles: { halign: 'center', fontStyle: 'bold' } },
       formatMoney(report.totales.ventasExentas),
       formatMoney(report.totales.ventasNoSujetas),
       formatMoney(report.totales.gravadasVentas),
@@ -341,6 +331,154 @@ export function exportVatBookToPdf(report: VatBookSummary) {
       margin: { left: 55, right: 55 },
       styles: { fontSize: 6.5, cellPadding: 1.2, halign: 'center' },
       headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      theme: 'grid',
+    });
+
+    finalY = (doc as any).lastAutoTable?.finalY ?? finalY;
+  } else if (report.libro === 'contribuyentes' && (report as any).cuadroResumen) {
+    const cr = (report as any).cuadroResumen;
+    let crStartY = finalY + 5;
+    if (crStartY + 45 > 190) {
+      doc.addPage();
+      crStartY = 15;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('CUADRO RESUMEN', 14, crStartY + 2);
+
+    const crColumns = [
+      '',
+      'VENTAS\nEXENTAS',
+      'VENTAS\nGRAVADAS',
+      'EXPORTACIONES',
+      'REBAJAS\nS/EXPORTACIONES',
+      'REBAJAS\nS/VENTAS',
+      'DEBITO FISCAL POR\nVENTAS PROPIAS',
+      'DEBITO FISCAL\nPOR REBAJAS S/V',
+      'VENTAS A\nCTA DE',
+      'DEBITO FISCAL POR\nVENTAS A TERCEROS',
+    ];
+
+    const crRows: any[] = [
+      [
+        'CONSUMIDORES FINALES',
+        formatMoney(cr.consumidoresFinales?.ventasExentas),
+        formatMoney(cr.consumidoresFinales?.ventasGravadas),
+        formatMoney(cr.consumidoresFinales?.exportaciones),
+        formatMoney(cr.consumidoresFinales?.rebajasExportaciones),
+        formatMoney(cr.consumidoresFinales?.rebajasVentas),
+        formatMoney(cr.consumidoresFinales?.debitoFiscalPropias),
+        formatMoney(cr.consumidoresFinales?.debitoFiscalRebajas),
+        formatMoney(cr.consumidoresFinales?.ventasCuentasTerceros),
+        formatMoney(cr.consumidoresFinales?.debitoFiscalTerceros),
+      ],
+      [
+        'CONTRIBUYENTES',
+        formatMoney(cr.contribuyentes?.ventasExentas),
+        formatMoney(cr.contribuyentes?.ventasGravadas),
+        formatMoney(cr.contribuyentes?.exportaciones),
+        formatMoney(cr.contribuyentes?.rebajasExportaciones),
+        formatMoney(cr.contribuyentes?.rebajasVentas),
+        formatMoney(cr.contribuyentes?.debitoFiscalPropias),
+        formatMoney(cr.contribuyentes?.debitoFiscalRebajas),
+        formatMoney(cr.contribuyentes?.ventasCuentasTerceros),
+        formatMoney(cr.contribuyentes?.debitoFiscalTerceros),
+      ],
+      [
+        'SUB TOTAL',
+        formatMoney(cr.subTotal?.ventasExentas),
+        formatMoney(cr.subTotal?.ventasGravadas),
+        formatMoney(cr.subTotal?.exportaciones),
+        formatMoney(cr.subTotal?.rebajasExportaciones),
+        formatMoney(cr.subTotal?.rebajasVentas),
+        formatMoney(cr.subTotal?.debitoFiscalPropias),
+        formatMoney(cr.subTotal?.debitoFiscalRebajas),
+        formatMoney(cr.subTotal?.ventasCuentasTerceros),
+        formatMoney(cr.subTotal?.debitoFiscalTerceros),
+      ],
+      [
+        { content: 'TOTAL VENTAS GRAVADAS - REV', colSpan: 3, styles: { fontStyle: 'bold', halign: 'left' } },
+        { content: formatMoney(cr.totalVentasGravadasMenosRev ?? cr.subTotal?.ventasGravadas), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
+        { content: 'TOTAL + DEBITOS GRAV-DEBITOS POR REV', colSpan: 3, styles: { fontStyle: 'bold', halign: 'left' } },
+        { content: formatMoney(cr.totalDebitosGravMenosRev ?? cr.subTotal?.debitoFiscalPropias), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
+      ],
+    ];
+
+    autoTable(doc, {
+      head: [crColumns],
+      body: crRows,
+      startY: crStartY + 4,
+      margin: { left: 14, right: 14 },
+      styles: { fontSize: 6.5, cellPadding: 1.2, halign: 'right' },
+      headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 6 },
+      columnStyles: {
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 38 },
+        1: { halign: 'right' },
+        2: { halign: 'right' },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+        5: { halign: 'right' },
+        6: { halign: 'right' },
+        7: { halign: 'right' },
+        8: { halign: 'right' },
+        9: { halign: 'right' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.index === 2) {
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+      theme: 'grid',
+    });
+
+    finalY = (doc as any).lastAutoTable?.finalY ?? finalY;
+  } else if (report.libro === 'consumidor_final' && (report as any).cuadroResumen) {
+    const cr = (report as any).cuadroResumen;
+    let crStartY = finalY + 5;
+    if (crStartY + 45 > 190) {
+      doc.addPage();
+      crStartY = 15;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('CUADRO RESUMEN', 14, crStartY + 2);
+
+    const calcDebito = cr.calculoDebitoFiscal || {};
+    const resGral = cr.resumenGeneral || {};
+
+    autoTable(doc, {
+      head: [
+        [
+          { content: 'CALCULO DEL DEBITO FISCAL', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
+          { content: 'RESUMEN GENERAL', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
+        ],
+      ],
+      body: [
+        ['VENTAS GRAVADAS', formatMoney(calcDebito.ventasGravadas), 'VENTA BRUTA', formatMoney(resGral.ventaBruta)],
+        ['REB. Y DEV. S/VENTA', formatMoney(calcDebito.rebajasDevoluciones), 'EXPORTACIONES', formatMoney(resGral.exportaciones)],
+        ['VENTA GRAVADA NETA (/ 1.13)', formatMoney(calcDebito.ventaGravada), 'REB. Y DEV. S/EXPORT.', formatMoney(resGral.rebajasExport)],
+        ['IMPUESTO IVA LIQUIDADO', formatMoney(calcDebito.impuestoIva), 'EXPORTACIONES NETAS', formatMoney(resGral.exportacionesNetas)],
+        ['IVA RETENIDO', formatMoney(calcDebito.ivaRetenido), 'EXENTAS', formatMoney(resGral.exentas)],
+        ['IVA PERCIBIDO', formatMoney(calcDebito.ivaPercibido), 'NO SUJETAS', formatMoney(resGral.noSujetas)],
+        ['', '', 'TOTAL VENTAS', formatMoney(resGral.totalVentas)],
+      ],
+      startY: crStartY + 4,
+      margin: { left: 14, right: 14 },
+      styles: { fontSize: 6.5, cellPadding: 1.2 },
+      headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      columnStyles: {
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 50 },
+        1: { halign: 'right', cellWidth: 35 },
+        2: { halign: 'left', fontStyle: 'bold', cellWidth: 50 },
+        3: { halign: 'right', cellWidth: 35 },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.index === 6 && data.column.index >= 2) {
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
       theme: 'grid',
     });
 
