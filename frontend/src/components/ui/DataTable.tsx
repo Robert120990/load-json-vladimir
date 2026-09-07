@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 export interface Column<T> {
   key: string;
   header: string;
-  render?: (row: T) => React.ReactNode;
+  render?: (row: T, index?: number) => React.ReactNode;
   align?: 'left' | 'center' | 'right';
   className?: string;
 }
@@ -137,7 +137,7 @@ export default function DataTable<T extends { [key: string]: any }>({
                       key={col.key}
                       className={`text-${col.align ?? 'left'} ${col.className ?? ''}`}
                     >
-                      {col.render ? col.render(row) : (row[col.key] ?? '-')}
+                      {col.render ? col.render(row, idx) : (row[col.key] ?? '-')}
                     </td>
                   ))}
                   {actions && (

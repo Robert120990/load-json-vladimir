@@ -5,8 +5,7 @@ import {
   Building2,
   CheckCircle2,
   CheckSquare,
-  FileSpreadsheet,
-  Pencil,
+  Edit2,
   Percent,
   Plus,
   RefreshCw,
@@ -27,6 +26,8 @@ import {
 } from '../../api/admin';
 import { obtenerError } from '../../api/client';
 import ControlIvaLayout from '../../components/layout/ControlIvaLayout';
+import Badge from '../../components/ui/Badge';
+import DataTable, { Column } from '../../components/ui/DataTable';
 import Modal from '../../components/ui/Modal';
 import type { AdminUserSummary, EmpresaAdminDetail } from '../../types';
 import { matchesSearchTokens } from '../../utils/searchUtils';
@@ -38,6 +39,8 @@ export default function EmpresasPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'S' | 'N'>('ALL');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   // Modal Crear / Editar
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,7 +117,13 @@ export default function EmpresasPage() {
     });
   }, [empresas, statusFilter, searchTerm]);
 
-  // Usuarios filtrados dentro del modal de creación
+  // Paginación
+  const paginatedEmpresas = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredEmpresas.slice(start, start + limit);
+  }, [filteredEmpresas, page, limit]);
+
+  // Usuarios filtrados en el modal
   const filteredModalUsers = useMemo(() => {
     return adminUsers.filter((u) =>
       matchesSearchTokens([u.nom_usu, u.desc_usu, u.cod_rol], userSearch)
@@ -136,7 +145,6 @@ export default function EmpresasPage() {
     setFormActiva('S');
     setUserSearch('');
 
-    // Pre-asignar ADMIN y el usuario logueado por defecto
     const defaultUsers = new Set<string>();
     defaultUsers.add('ADMIN');
     if (currentAuthUser) {
@@ -164,7 +172,6 @@ export default function EmpresasPage() {
   }
 
   function toggleUserSelection(nomUsu: string) {
-    // Si es ADMIN, no permitir deseleccionarlo
     if (nomUsu.toUpperCase() === 'ADMIN') {
       toast('El usuario ADMIN siempre debe mantener acceso a la empresa', { icon: 'ℹ️' });
       return;
@@ -187,7 +194,6 @@ export default function EmpresasPage() {
   }
 
   function handleDeselectAllUsers() {
-    // Mantener al menos ADMIN
     const adminOnly = new Set<string>(['ADMIN']);
     if (currentAuthUser) adminOnly.add(currentAuthUser);
     setFormSelectedUsers(adminOnly);
@@ -283,225 +289,239 @@ export default function EmpresasPage() {
     }
   }
 
+  const columns: Column<EmpresaAdminDetail>[] = [
+    {
+      key: 'index',
+      header: '#',
+      align: 'center',
+      className: 'w-12',
+      render: (_row, idx) => (
+        <span className="text-muted font-mono" style={{ fontSize: '0.78rem' }}>
+          {(idx ?? 0) + 1 + (page - 1) * limit}
+        </span>
+      ),
+    },
+    {
+      key: 'cod_emp',
+      header: 'Cód.',
+      align: 'center',
+      render: (e) => (
+        <strong className="font-mono text-primary" style={{ fontSize: '0.85rem' }}>
+          #{e.cod_emp}
+        </strong>
+      ),
+    },
+    {
+      key: 'nom_emp',
+      header: 'Nombre Comercial',
+      render: (e) => (
+        <div>
+          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem' }}>{e.nom_emp}</div>
+          {e.contador && (
+            <div className="text-muted text-xs" style={{ marginTop: '2px' }}>
+              Contador: {e.contador}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'razon_social',
+      header: 'Razón Social',
+      render: (e) => (
+        <span style={{ color: '#475569', fontSize: '0.82rem' }}>
+          {e.razon_social || <span className="text-muted italic">—</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'fiscal',
+      header: 'NIT / NRC',
+      render: (e) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontFamily: 'monospace', fontSize: '0.78rem' }}>
+          <div>
+            <span style={{ color: '#64748b' }}>NIT: </span>
+            <strong style={{ color: '#1e293b' }}>{e.nit || '—'}</strong>
+          </div>
+          {e.reg_fiscal && (
+            <div>
+              <span style={{ color: '#64748b' }}>NRC: </span>
+              <span style={{ color: '#475569' }}>{e.reg_fiscal}</span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'porcentaje_pago_cuenta',
+      header: '% Pago Cuenta',
+      align: 'center',
+      render: (e) => (
+        <Badge variant="info">
+          {Number(e.porcentaje_pago_cuenta ?? 1.75).toFixed(2)}%
+        </Badge>
+      ),
+    },
+    {
+      key: 'total_usuarios',
+      header: 'Usuarios',
+      align: 'center',
+      render: (e) => (
+        <button
+          type="button"
+          onClick={() => navigate('/admin/asignacion-empresas')}
+          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+          title="Ver usuarios asignados a esta empresa"
+        >
+          <Badge variant={(e.total_usuarios || 0) > 0 ? 'primary' : 'danger'}>
+            {e.total_usuarios || 0} {(e.total_usuarios === 1 ? 'usuario' : 'usuarios')}
+          </Badge>
+        </button>
+      ),
+    },
+    {
+      key: 'activa',
+      header: 'Estado',
+      align: 'center',
+      render: (e) => (
+        <Badge variant={e.activa === 'S' ? 'success' : 'neutral'}>
+          {e.activa === 'S' ? 'Activa' : 'Inactiva'}
+        </Badge>
+      ),
+    },
+  ];
+
   return (
     <ControlIvaLayout>
-      <div className="page-header-container">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-              <Building2 size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">Gestión de Empresas</h1>
-              <p className="text-sm text-slate-500">
-                Administración de empresas emisoras, datos fiscales, tasa de pago a cuenta y configuración contable
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/usuarios')}
-              className="btn-secundario btn-icon-gap"
-              title="Ir a gestión de usuarios"
-            >
-              <Users size={16} />
-              <span>Gestión de Usuarios</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/admin/asignacion-empresas')}
-              className="btn-secundario btn-icon-gap"
-              title="Ir a asignación de empresas"
-            >
-              <ShieldCheck size={16} />
-              <span>Asignación Masiva</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="btn-primario btn-icon-gap"
-            >
-              <Plus size={18} />
-              <span>Nueva Empresa</span>
-            </button>
-          </div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Gestión de Empresas</h1>
+          <p className="page-subtitle">
+            Administración de empresas emisoras, datos fiscales, tasa de pago a cuenta y configuración contable
+          </p>
         </div>
 
-        {/* Barra de Filtros y Búsqueda */}
-        <div className="filtros-card mb-6">
-          <div className="search-box">
-            <Search size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Buscar por nombre comercial, razón social, NIT, NRC, teléfono..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
+        <div className="header-actions">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/usuarios')}
+            className="btn-secundario btn-icon-gap"
+            title="Ir a gestión de usuarios"
+          >
+            <Users size={16} />
+            <span>Gestión de Usuarios</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/asignacion-empresas')}
+            className="btn-secundario btn-icon-gap"
+            title="Ir a asignación de empresas"
+          >
+            <ShieldCheck size={16} />
+            <span>Asignación Masiva</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenCreateModal}
+            className="btn-primario btn-icon-gap"
+          >
+            <Plus size={18} />
+            <span>Nueva Empresa</span>
+          </button>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-3">
+      <div className="card">
+        {/* Barra superior de filtros de estado y refrescar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '14px',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
+              Filtrar por estado:
+            </span>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'S' | 'N')}
-              className="form-input text-xs"
-              style={{ width: 'auto', minWidth: '150px' }}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as 'ALL' | 'S' | 'N');
+                setPage(1);
+              }}
+              className="select-periodo"
+              style={{ padding: '6px 12px', fontSize: '0.85rem', minWidth: '160px' }}
             >
               <option value="ALL">Todas las empresas</option>
               <option value="S">Solo Activas</option>
               <option value="N">Solo Inactivas</option>
             </select>
-
-            <button
-              type="button"
-              className="btn-secundario btn-sm"
-              onClick={loadData}
-              disabled={loading}
-              title="Refrescar listado"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Actualizar</span>
-            </button>
-
-            <div className="registros-badge">
-              <span>{filteredEmpresas.length} empresas</span>
-            </div>
           </div>
+
+          <button
+            type="button"
+            className="btn-secundario btn-sm"
+            onClick={loadData}
+            disabled={loading}
+            title="Refrescar listado"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span>Actualizar</span>
+          </button>
         </div>
-      </div>
 
-      {/* Tabla de Empresas */}
-      <div className="tabla-container-card">
-        <table className="tabla-moderna">
-          <thead>
-            <tr>
-              <th className="w-12 text-center">#</th>
-              <th className="w-16 text-center">Cód.</th>
-              <th>Nombre Comercial</th>
-              <th>Razón Social</th>
-              <th>NIT / NRC</th>
-              <th className="text-center">% Pago Cuenta</th>
-              <th className="text-center">Usuarios</th>
-              <th className="text-center">Estado</th>
-              <th className="text-center w-32">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={9} className="td-cargando">
-                  Cargando empresas del sistema…
-                </td>
-              </tr>
-            ) : filteredEmpresas.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="td-vacio">
-                  No se encontraron empresas registradas coincidentes con los filtros aplicados.
-                </td>
-              </tr>
-            ) : (
-              filteredEmpresas.map((e, idx) => {
-                const isActive = e.activa === 'S';
-                const pct = Number(e.porcentaje_pago_cuenta ?? 1.75);
-
-                return (
-                  <tr key={e.cod_emp} className={!isActive ? 'opacity-70 bg-slate-50' : ''}>
-                    <td className="text-center font-mono text-xs text-muted">{idx + 1}</td>
-                    <td className="text-center font-mono font-bold text-slate-800">
-                      #{e.cod_emp}
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">{e.nom_emp}</span>
-                        {e.contador && (
-                          <span
-                            className="text-xs text-slate-400"
-                            title={`Contador: ${e.contador}`}
-                          >
-                            • {e.contador}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-sm text-slate-600">
-                        {e.razon_social || <span className="text-muted italic">—</span>}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex flex-col font-mono text-xs">
-                        <span className="text-slate-800 font-medium">
-                          NIT: {e.nit || <span className="text-muted italic">Sin NIT</span>}
-                        </span>
-                        {e.reg_fiscal && (
-                          <span className="text-slate-500">NRC: {e.reg_fiscal}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="text-center">
-                      <span className="badge badge-info font-mono font-bold text-xs">
-                        {pct.toFixed(2)}%
-                      </span>
-                    </td>
-                    <td className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => navigate('/admin/asignacion-empresas')}
-                        className={`badge ${
-                          (e.total_usuarios || 0) > 0 ? 'badge-primary' : 'badge-danger'
-                        } text-xs font-semibold cursor-pointer hover:opacity-80 transition-opacity`}
-                        title="Ver usuarios asignados a esta empresa"
-                      >
-                        {e.total_usuarios || 0} usuario{(e.total_usuarios || 0) === 1 ? '' : 's'}
-                      </button>
-                    </td>
-                    <td className="text-center">
-                      {isActive ? (
-                        <span className="badge badge-success text-xs font-semibold">
-                          Activa
-                        </span>
-                      ) : (
-                        <span className="badge badge-neutral text-xs font-semibold">
-                          Inactiva
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          className="btn-accion btn-accion-editar"
-                          onClick={() => handleOpenEditModal(e)}
-                          title={`Editar empresa #${e.cod_emp} - ${e.nom_emp}`}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-accion btn-accion-info"
-                          onClick={() => navigate('/admin/asignacion-empresas')}
-                          title={`Gestionar accesos a #${e.cod_emp}`}
-                        >
-                          <Users size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-accion btn-accion-eliminar"
-                          onClick={() => setEmpresaToDelete(e)}
-                          title={`Eliminar o desactivar empresa #${e.cod_emp}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+        <DataTable
+          columns={columns}
+          data={paginatedEmpresas}
+          loading={loading}
+          total={filteredEmpresas.length}
+          page={page}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => {
+            setLimit(l);
+            setPage(1);
+          }}
+          searchTerm={searchTerm}
+          onSearchChange={(s) => {
+            setSearchTerm(s);
+            setPage(1);
+          }}
+          searchPlaceholder="Buscar por nombre comercial, razón social, NIT, NRC, teléfono..."
+          emptyMessage="No se encontraron empresas registradas coincidentes con los filtros aplicados."
+          actions={(e) => (
+            <div className="acciones-fila">
+              <button
+                type="button"
+                className="btn-accion btn-editar"
+                onClick={() => handleOpenEditModal(e)}
+                title={`Editar empresa #${e.cod_emp} - ${e.nom_emp}`}
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                type="button"
+                className="btn-accion btn-ver"
+                onClick={() => navigate('/admin/asignacion-empresas')}
+                title={`Gestionar accesos a #${e.cod_emp}`}
+              >
+                <Users size={16} />
+              </button>
+              <button
+                type="button"
+                className="btn-accion btn-eliminar"
+                onClick={() => setEmpresaToDelete(e)}
+                title={`Eliminar o desactivar empresa #${e.cod_emp}`}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          )}
+        />
       </div>
 
       {/* Modal Crear / Editar Empresa */}
@@ -509,50 +529,79 @@ export default function EmpresasPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={isEditing ? `Editar Empresa #${editingCodEmp}: ${formNomEmp}` : 'Crear Nueva Empresa'}
-        maxWidth="4xl"
+        maxWidth="2xl"
       >
         <form onSubmit={handleSubmitForm} onKeyDown={handleEnterNavigation} className="form-symmetrical">
           {/* Banner de Inicialización Automática (Solo al Crear) */}
           {!isEditing && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4 text-blue-900 shadow-sm">
-              <div className="font-bold flex items-center gap-2 mb-1.5 text-blue-800 text-sm">
-                <Sparkles size={18} className="text-blue-600" />
+            <div
+              style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '10px',
+                padding: '14px 16px',
+                color: '#1e3a8a',
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px',
+                  color: '#1d4ed8',
+                  fontSize: '0.88rem',
+                }}
+              >
+                <Sparkles size={18} style={{ color: '#2563eb' }} />
                 <span>Inicialización Automática de Catálogos Contables y Tributarios</span>
               </div>
-              <p className="text-xs text-blue-700 leading-relaxed mb-2">
+              <p style={{ fontSize: '0.78rem', color: '#1e40af', margin: '0 0 8px 0', lineHeight: 1.4 }}>
                 Al guardar, el sistema configurará automáticamente los catálogos base para esta empresa:
               </p>
-              <div className="grid grid-cols-2 gap-2 text-xs text-blue-800 font-medium bg-white/70 rounded-lg p-2.5 border border-blue-100">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />
-                  <span>9 Tipos de Cuenta (Activo, Pasivo, Capital...)</span>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '6px',
+                  fontSize: '0.76rem',
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  border: '1px solid #dbeafe',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span>9 Tipos de Cuenta (Activo, Pasivo, etc.)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />
-                  <span>13 Tipos de Partida (Ingresos, Egresos, Diario...)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span>13 Tipos de Partida (Diario, Gastos, etc.)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />
-                  <span>12 Tipos de Documento (CCF, FAC, FEX, NCR...)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span>12 Tipos de Documento (CCF, FAC, etc.)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />
-                  <span>2 Tipos de Pago (01 Contado, 02 Crédito)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span>2 Tipos de Pago (Contado, Crédito)</span>
                 </div>
               </div>
             </div>
           )}
 
           {/* Sección 1: Datos de Identificación y Fiscales */}
-          <div className="form-section-title flex items-center gap-2">
-            <Building2 size={16} className="text-blue-600" />
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Building2 size={16} style={{ color: '#2563eb' }} />
             <span>1. Identificación y Registro Fiscal</span>
           </div>
 
           <div className="form-grid-symmetrical cols-2">
-            <div className="form-group col-span-2">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">
-                Nombre Comercial <span className="text-red-500">*</span>
+                Nombre Comercial <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
@@ -563,10 +612,12 @@ export default function EmpresasPage() {
                 maxLength={60}
                 required
               />
-              <span className="text-xs text-muted mt-1">Nombre visible en encabezados y reportes</span>
+              <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
+                Nombre visible en encabezados y reportes
+              </span>
             </div>
 
-            <div className="form-group col-span-2">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Razón Social</label>
               <input
                 type="text"
@@ -579,7 +630,7 @@ export default function EmpresasPage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">NIT (Número de Identificación Tributaria)</label>
+              <label className="form-label">NIT</label>
               <input
                 type="text"
                 className="form-input font-mono"
@@ -604,61 +655,72 @@ export default function EmpresasPage() {
           </div>
 
           {/* Sección 2: Parámetros Tributarios y Contables */}
-          <div className="form-section-title flex items-center gap-2 mt-4">
-            <Percent size={16} className="text-blue-600" />
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+            <Percent size={16} style={{ color: '#2563eb' }} />
             <span>2. Parámetros Tributarios y Configuración de Pago a Cuenta</span>
           </div>
 
           <div className="form-grid-symmetrical cols-3">
             <div className="form-group">
               <label className="form-label">
-                % Pago a Cuenta <span className="text-red-500">*</span>
+                % Pago a Cuenta <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <div className="relative flex items-center">
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   max="100"
-                  className="form-input font-mono font-bold pr-8"
+                  className="form-input font-mono font-bold"
+                  style={{ paddingRight: '32px' }}
                   value={formPorcentajePagoCuenta}
                   onChange={(e) => setFormPorcentajePagoCuenta(e.target.value)}
                   placeholder="1.75"
                   required
                 />
-                <span className="absolute right-3 text-slate-400 font-bold text-sm">%</span>
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    color: '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  %
+                </span>
               </div>
-              <span className="text-xs text-muted mt-1">
-                Por defecto <strong>1.75%</strong>. Gasolineras: 0.30%, Agro: 0.75%.
+              <span className="text-muted" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
+                Por defecto <strong>1.75%</strong>.
               </span>
             </div>
 
             <div className="form-group">
               <label className="form-label">Tipo de Costeo</label>
               <select
-                className="form-input font-semibold"
+                className="form-input"
                 value={formTipoCosto}
                 onChange={(e) => setFormTipoCosto(e.target.value)}
               >
                 <option value="PROMEDIO">PROMEDIO PONDERADO</option>
-                <option value="PEPS">PEPS (PRIMERO EN ENTRAR, PRIMERO EN SALIR)</option>
-                <option value="UEPS">UEPS (ÚLTIMO EN ENTRAR, PRIMERO EN SALIR)</option>
+                <option value="PEPS">PEPS (PRIMERO EN ENTRAR...)</option>
+                <option value="UEPS">UEPS (ÚLTIMO EN ENTRAR...)</option>
               </select>
             </div>
 
             <div className="form-group">
               <label className="form-label">Estado de la Empresa</label>
               <select
-                className="form-input font-semibold"
+                className="form-input"
                 value={formActiva}
                 onChange={(e) => setFormActiva(e.target.value as 'S' | 'N')}
               >
-                <option value="S">ACTIVA (Habilitada en el sistema)</option>
+                <option value="S">ACTIVA (Habilitada)</option>
                 <option value="N">INACTIVA (Deshabilitada)</option>
               </select>
             </div>
 
-            <div className="form-group col-span-3">
+            <div className="form-group" style={{ gridColumn: 'span 3' }}>
               <label className="form-label">Nombre del Contador / Auditor</label>
               <input
                 type="text"
@@ -672,13 +734,13 @@ export default function EmpresasPage() {
           </div>
 
           {/* Sección 3: Contacto y Domicilio */}
-          <div className="form-section-title flex items-center gap-2 mt-4">
-            <FileSpreadsheet size={16} className="text-blue-600" />
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+            <Building2 size={16} style={{ color: '#2563eb' }} />
             <span>3. Domicilio y Contacto</span>
           </div>
 
           <div className="form-grid-symmetrical cols-3">
-            <div className="form-group col-span-2">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Dirección Fiscal / Domicilio</label>
               <input
                 type="text"
@@ -706,44 +768,68 @@ export default function EmpresasPage() {
           {/* Sección 4: Asignación Inicial de Usuarios (Solo al Crear) */}
           {!isEditing && (
             <>
-              <div className="form-section-title flex items-center justify-between mt-4">
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-blue-600" />
-                  <span>4. Asignación Inicial de Usuarios</span>
+              <div
+                className="form-section-title"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={16} style={{ color: '#2563eb' }} />
+                  <span>
+                    4. Asignación Inicial de Usuarios ({formSelectedUsers.size} seleccionados)
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={handleSelectAllUsers}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                    className="btn-link-action"
                   >
                     Seleccionar Todos
                   </button>
-                  <span className="text-slate-300">|</span>
+                  <span style={{ color: '#cbd5e1' }}>|</span>
                   <button
                     type="button"
                     onClick={handleDeselectAllUsers}
-                    className="text-xs text-slate-500 hover:text-slate-700 font-semibold cursor-pointer"
+                    className="btn-link-action"
+                    style={{ color: '#64748b' }}
                   >
                     Solo Administrador
                   </button>
                 </div>
               </div>
 
-              <div className="search-box mb-2">
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                 <Search size={16} className="search-icon" />
                 <input
                   type="text"
                   placeholder="Filtrar usuarios para asignación..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
-                  className="search-input text-xs"
+                  className="input-busqueda"
+                  style={{ fontSize: '0.85rem' }}
                 />
               </div>
 
-              <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
+              <div
+                style={{
+                  maxHeight: '180px',
+                  overflowY: 'auto',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  background: '#f8fafc',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
                 {filteredModalUsers.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-slate-400">
+                  <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
                     No se encontraron usuarios coincidentes
                   </div>
                 ) : (
@@ -755,31 +841,37 @@ export default function EmpresasPage() {
                       <div
                         key={u.nom_usu}
                         onClick={() => toggleUserSelection(u.nom_usu)}
-                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
-                          isChecked
-                            ? 'bg-blue-50 border border-blue-200 text-blue-900 font-medium'
-                            : 'hover:bg-slate-100 text-slate-700'
-                        }`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.82rem',
+                          background: isChecked ? '#eff6ff' : '#ffffff',
+                          border: isChecked ? '1px solid #bfdbfe' : '1px solid #f1f5f9',
+                          color: isChecked ? '#1e40af' : '#1e293b',
+                          transition: 'all 0.15s ease',
+                        }}
                       >
-                        <div className="flex items-center gap-2">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {isChecked ? (
-                            <CheckSquare size={16} className="text-blue-600 flex-shrink-0" />
+                            <CheckSquare size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
                           ) : (
-                            <Square size={16} className="text-slate-400 flex-shrink-0" />
+                            <Square size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
                           )}
-                          <span className="font-mono font-bold">{u.nom_usu}</span>
+                          <span className="font-mono" style={{ fontWeight: 700 }}>
+                            {u.nom_usu}
+                          </span>
                           {u.desc_usu && (
-                            <span className="text-slate-500 font-normal">
-                              ({u.desc_usu})
-                            </span>
+                            <span style={{ color: '#64748b' }}>({u.desc_usu})</span>
                           )}
-                          {isSuperAdmin && (
-                            <span className="badge badge-info text-2xs font-bold py-0 px-1">
-                              ADMIN
-                            </span>
-                          )}
+                          {isSuperAdmin && <Badge variant="info">ADMIN</Badge>}
                         </div>
-                        <span className="text-muted text-2xs">Rol: {u.cod_rol || '01'}</span>
+                        <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                          Rol: {u.cod_rol || '01'}
+                        </span>
                       </div>
                     );
                   })
@@ -789,7 +881,7 @@ export default function EmpresasPage() {
           )}
 
           {/* Botones de Acción */}
-          <div className="modal-actions mt-6">
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
             <button
               type="button"
               className="btn-secundario"
@@ -817,36 +909,53 @@ export default function EmpresasPage() {
         title="Confirmar Eliminación o Desactivación"
         maxWidth="md"
       >
-        <div className="p-2">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-red-50 text-red-600 rounded-full flex-shrink-0">
+        <div style={{ padding: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+            <div
+              style={{
+                padding: '12px',
+                background: '#fef2f2',
+                color: '#dc2626',
+                borderRadius: '50%',
+                flexShrink: 0,
+              }}
+            >
               <AlertTriangle size={24} />
             </div>
             <div>
-              <h4 className="font-bold text-slate-800 text-base mb-1">
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
                 ¿Eliminar o Desactivar la Empresa #{empresaToDelete?.cod_emp}?
               </h4>
-              <p className="text-sm font-semibold text-slate-700 mb-2">
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', fontWeight: 600, color: '#1e293b' }}>
                 {empresaToDelete?.nom_emp}
               </p>
-              <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+              <p style={{ margin: '0 0 10px 0', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
                 Si la empresa ya cuenta con movimientos tributarios (compras/ventas) o partidas
                 contables registradas, el sistema la <strong>desactivará de forma segura</strong>{' '}
                 (Estado: Inactiva) para preservar la integridad de los libros fiscales.
               </p>
-              <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+              <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5 }}>
                 Si es una empresa recién creada sin movimientos, será eliminada completamente de la base
                 de datos.
               </p>
               {empresaToDelete?.razon_social && (
-                <div className="p-2 bg-slate-100 rounded text-xs text-slate-600 mb-2">
+                <div
+                  style={{
+                    padding: '8px 12px',
+                    background: '#f8fafc',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    color: '#475569',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
                   <strong>Razón Social:</strong> {empresaToDelete.razon_social}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="modal-actions mt-6">
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
             <button
               type="button"
               className="btn-secundario"

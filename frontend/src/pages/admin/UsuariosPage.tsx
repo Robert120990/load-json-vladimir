@@ -5,10 +5,10 @@ import {
   Building2,
   CheckCircle2,
   CheckSquare,
+  Edit2,
   Eye,
   EyeOff,
   KeyRound,
-  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -16,7 +16,6 @@ import {
   Square,
   Trash2,
   UserCheck,
-  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -29,6 +28,8 @@ import {
 } from '../../api/admin';
 import { obtenerError } from '../../api/client';
 import ControlIvaLayout from '../../components/layout/ControlIvaLayout';
+import Badge from '../../components/ui/Badge';
+import DataTable, { Column } from '../../components/ui/DataTable';
 import Modal from '../../components/ui/Modal';
 import type { AdminUserSummary, CompanyAssignment } from '../../types';
 import { matchesSearchTokens } from '../../utils/searchUtils';
@@ -39,6 +40,8 @@ export default function UsuariosPage() {
   const [activeCompanies, setActiveCompanies] = useState<CompanyAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   // Modal Crear / Editar
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,6 +97,12 @@ export default function UsuariosPage() {
     );
   }, [users, searchTerm]);
 
+  // Paginación en cliente
+  const paginatedUsers = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredUsers.slice(start, start + limit);
+  }, [filteredUsers, page, limit]);
+
   // Empresas filtradas dentro del modal
   const filteredModalCompanies = useMemo(() => {
     return activeCompanies.filter((c) =>
@@ -109,7 +118,6 @@ export default function UsuariosPage() {
     setShowPassword(false);
     setFormCodRol('01');
     setFormCodPuntoVenta('001');
-    // Preseleccionar la primera empresa por defecto
     const firstId = activeCompanies.length > 0 ? [activeCompanies[0].cod_emp] : [1];
     setFormSelectedCompanies(new Set(firstId));
     setCompanySearch('');
@@ -235,7 +243,9 @@ export default function UsuariosPage() {
       e.preventDefault();
       const form = e.currentTarget;
       const elements = Array.from(
-        form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input:not([disabled]):not([readonly]), select:not([disabled])')
+        form.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+          'input:not([disabled]):not([readonly]), select:not([disabled])'
+        )
       );
       const index = elements.indexOf(e.target);
       if (index >= 0 && index < elements.length - 1) {
@@ -244,199 +254,199 @@ export default function UsuariosPage() {
     }
   }
 
+  const columns: Column<AdminUserSummary>[] = [
+    {
+      key: 'index',
+      header: '#',
+      align: 'center',
+      className: 'w-12',
+      render: (_row, idx) => (
+        <span className="text-muted font-mono" style={{ fontSize: '0.78rem' }}>
+          {(idx ?? 0) + 1 + (page - 1) * limit}
+        </span>
+      ),
+    },
+    {
+      key: 'nom_usu',
+      header: 'Usuario',
+      render: (u) => {
+        const isSuperAdmin = u.nom_usu.toUpperCase() === 'ADMIN';
+        const isCurrentSession = u.nom_usu.toUpperCase() === currentAuthUser;
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <strong className="font-mono text-primary">{u.nom_usu}</strong>
+            {isSuperAdmin && (
+              <Badge variant="info">
+                <ShieldCheck size={11} style={{ marginRight: '4px' }} />
+                ADMIN
+              </Badge>
+            )}
+            {isCurrentSession && <Badge variant="neutral">Tú</Badge>}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'desc_usu',
+      header: 'Nombre o Descripción',
+      render: (u) => (
+        <span style={{ color: '#334155' }}>
+          {u.desc_usu || <span className="text-muted italic">Sin descripción</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'cod_rol',
+      header: 'Rol / Perfil',
+      align: 'center',
+      render: (u) => (
+        <Badge variant={u.cod_rol === '01' ? 'primary' : u.cod_rol === '02' ? 'info' : 'neutral'}>
+          {u.cod_rol === '01'
+            ? '01 - Administrador'
+            : u.cod_rol === '02'
+            ? '02 - Contador'
+            : u.cod_rol || '01'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'cod_punto_venta',
+      header: 'Punto de Venta',
+      align: 'center',
+      render: (u) => (
+        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#475569' }}>
+          {u.cod_punto_venta || '001'}
+        </span>
+      ),
+    },
+    {
+      key: 'total_empresas',
+      header: 'Empresas Asignadas',
+      align: 'center',
+      render: (u) => (
+        <button
+          type="button"
+          onClick={() =>
+            navigate(`/admin/asignacion-empresas?usuario=${encodeURIComponent(u.nom_usu)}`)
+          }
+          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+          title={`Ver empresas de ${u.nom_usu}`}
+        >
+          <Badge variant={u.total_empresas > 0 ? 'success' : 'danger'}>
+            {u.total_empresas} empresa{u.total_empresas === 1 ? '' : 's'}
+          </Badge>
+        </button>
+      ),
+    },
+  ];
+
   return (
     <ControlIvaLayout>
-      <div className="page-header-container">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-              <Users size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">Gestión de Usuarios</h1>
-              <p className="text-sm text-slate-500">
-                Administración de cuentas, perfiles de acceso y empresas asignadas en el sistema
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/asignacion-empresas')}
-              className="btn-secundario btn-icon-gap"
-              title="Ir a asignación masiva de empresas"
-            >
-              <ShieldCheck size={16} />
-              <span>Asignación de Empresas</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="btn-primario btn-icon-gap"
-            >
-              <Plus size={18} />
-              <span>Nuevo Usuario</span>
-            </button>
-          </div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Gestión de Usuarios</h1>
+          <p className="page-subtitle">
+            Administración de cuentas, perfiles de acceso y empresas asignadas en el sistema
+          </p>
         </div>
 
-        {/* Barra de Filtros y Búsqueda */}
-        <div className="filtros-card mb-6">
-          <div className="search-box">
-            <Search size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Buscar por usuario, nombre, rol o punto de venta..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="btn-secundario btn-sm"
-              onClick={loadData}
-              disabled={loading}
-              title="Refrescar usuarios"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Actualizar</span>
-            </button>
-            <div className="registros-badge">
-              <span>{filteredUsers.length} usuarios</span>
-            </div>
-          </div>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="btn-secundario btn-icon-gap"
+            onClick={loadData}
+            disabled={loading}
+            title="Refrescar usuarios"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <span>Refrescar</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/asignacion-empresas')}
+            className="btn-secundario btn-icon-gap"
+            title="Ir a asignación masiva de empresas"
+          >
+            <ShieldCheck size={16} />
+            <span>Asignación Masiva</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenCreateModal}
+            className="btn-primario btn-icon-gap"
+          >
+            <Plus size={18} />
+            <span>Nuevo Usuario</span>
+          </button>
         </div>
       </div>
 
-      {/* Tabla de Usuarios */}
-      <div className="tabla-container-card">
-        <table className="tabla-moderna">
-          <thead>
-            <tr>
-              <th className="w-12 text-center">#</th>
-              <th>Usuario</th>
-              <th>Nombre / Descripción</th>
-              <th className="text-center">Rol / Perfil</th>
-              <th className="text-center">Punto de Venta</th>
-              <th className="text-center">Empresas Asignadas</th>
-              <th className="text-center w-32">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="td-cargando">
-                  Cargando usuarios del sistema…
-                </td>
-              </tr>
-            ) : filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="td-vacio">
-                  No se encontraron usuarios registrados coincidentes con la búsqueda.
-                </td>
-              </tr>
-            ) : (
-              filteredUsers.map((u, idx) => {
-                const isSuperAdmin = u.nom_usu.toUpperCase() === 'ADMIN';
-                const isCurrentSession = u.nom_usu.toUpperCase() === currentAuthUser;
+      <div className="card">
+        <DataTable
+          columns={columns}
+          data={paginatedUsers}
+          loading={loading}
+          total={filteredUsers.length}
+          page={page}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => {
+            setLimit(l);
+            setPage(1);
+          }}
+          searchTerm={searchTerm}
+          onSearchChange={(s) => {
+            setSearchTerm(s);
+            setPage(1);
+          }}
+          searchPlaceholder="Buscar por usuario, nombre, rol..."
+          emptyMessage="No se encontraron usuarios registrados coincidentes con la búsqueda."
+          actions={(u) => {
+            const isSuperAdmin = u.nom_usu.toUpperCase() === 'ADMIN';
+            const isCurrentSession = u.nom_usu.toUpperCase() === currentAuthUser;
 
-                return (
-                  <tr key={u.nom_usu}>
-                    <td className="text-center font-mono text-xs text-muted">{idx + 1}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-800">{u.nom_usu}</span>
-                        {isSuperAdmin && (
-                          <span className="badge badge-info text-xs flex items-center gap-1 font-bold">
-                            <ShieldCheck size={12} />
-                            ADMIN
-                          </span>
-                        )}
-                        {isCurrentSession && (
-                          <span className="badge badge-neutral text-xs font-semibold">Tú</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-sm font-medium text-slate-700">
-                        {u.desc_usu || <span className="text-muted italic">Sin descripción</span>}
-                      </span>
-                    </td>
-                    <td className="text-center">
-                      {u.cod_rol === '01' ? (
-                        <span className="badge badge-primary text-xs font-semibold">
-                          01 - Administrador
-                        </span>
-                      ) : u.cod_rol === '02' ? (
-                        <span className="badge badge-info text-xs font-semibold">
-                          02 - Contador
-                        </span>
-                      ) : (
-                        <span className="badge badge-neutral text-xs font-semibold">
-                          {u.cod_rol || '01'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-center font-mono text-xs text-slate-600">
-                      {u.cod_punto_venta || '001'}
-                    </td>
-                    <td className="text-center">
-                      <span
-                        className={`badge ${
-                          u.total_empresas > 0 ? 'badge-primary' : 'badge-danger'
-                        } text-xs font-bold`}
-                      >
-                        {u.total_empresas} empresa{u.total_empresas === 1 ? '' : 's'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          className="btn-accion btn-accion-editar"
-                          onClick={() => handleOpenEditModal(u)}
-                          title={`Editar usuario ${u.nom_usu}`}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-accion btn-accion-info"
-                          onClick={() =>
-                            navigate(
-                              `/admin/asignacion-empresas?usuario=${encodeURIComponent(u.nom_usu)}`
-                            )
-                          }
-                          title={`Asignar empresas a ${u.nom_usu}`}
-                        >
-                          <Building2 size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-accion btn-accion-eliminar"
-                          onClick={() => setUserToDelete(u)}
-                          disabled={isSuperAdmin || isCurrentSession}
-                          title={
-                            isSuperAdmin
-                              ? 'No se puede eliminar el usuario ADMIN'
-                              : isCurrentSession
-                              ? 'No puedes eliminar tu propio usuario activo'
-                              : `Eliminar usuario ${u.nom_usu}`
-                          }
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            return (
+              <div className="acciones-fila">
+                <button
+                  type="button"
+                  className="btn-accion btn-editar"
+                  onClick={() => handleOpenEditModal(u)}
+                  title={`Editar usuario ${u.nom_usu}`}
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="btn-accion btn-ver"
+                  onClick={() =>
+                    navigate(
+                      `/admin/asignacion-empresas?usuario=${encodeURIComponent(u.nom_usu)}`
+                    )
+                  }
+                  title={`Asignar empresas a ${u.nom_usu}`}
+                >
+                  <Building2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="btn-accion btn-eliminar"
+                  onClick={() => setUserToDelete(u)}
+                  disabled={isSuperAdmin || isCurrentSession}
+                  title={
+                    isSuperAdmin
+                      ? 'No se puede eliminar el usuario ADMIN'
+                      : isCurrentSession
+                      ? 'No puedes eliminar tu propio usuario activo'
+                      : `Eliminar usuario ${u.nom_usu}`
+                  }
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            );
+          }}
+        />
       </div>
 
       {/* Modal Crear / Editar Usuario */}
@@ -448,15 +458,15 @@ export default function UsuariosPage() {
       >
         <form onSubmit={handleSubmitForm} onKeyDown={handleEnterNavigation} className="form-symmetrical">
           {/* Sección 1: Credenciales */}
-          <div className="form-section-title flex items-center gap-2">
-            <KeyRound size={16} className="text-blue-600" />
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <KeyRound size={16} style={{ color: '#2563eb' }} />
             <span>1. Credenciales de Acceso</span>
           </div>
 
           <div className="form-grid-symmetrical cols-2">
             <div className="form-group">
               <label className="form-label">
-                Usuario (nom_usu) <span className="text-red-500">*</span>
+                Usuario (nom_usu) <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
@@ -470,17 +480,20 @@ export default function UsuariosPage() {
                 required
                 disabled={isEditing}
               />
-              <span className="text-xs text-muted mt-1">Máx. 20 caracteres en mayúsculas</span>
+              <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
+                Máx. 20 caracteres en mayúsculas
+              </span>
             </div>
 
             <div className="form-group">
               <label className="form-label">
-                Contraseña {isEditing ? '(Opcional)' : <span className="text-red-500">*</span>}
+                Contraseña {isEditing ? '(Opcional)' : <span style={{ color: '#ef4444' }}>*</span>}
               </label>
-              <div className="relative flex items-center">
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  className="form-input pr-10"
+                  className="form-input"
+                  style={{ paddingRight: '40px' }}
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                   placeholder={
@@ -490,7 +503,15 @@ export default function UsuariosPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-2 text-slate-400 hover:text-slate-600 p-1"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '4px',
+                  }}
                   onClick={() => setShowPassword((p) => !p)}
                   tabIndex={-1}
                   title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
@@ -498,18 +519,20 @@ export default function UsuariosPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <span className="text-xs text-muted mt-1">Mínimo 3 caracteres</span>
+              <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
+                Mínimo 3 caracteres
+              </span>
             </div>
           </div>
 
           {/* Sección 2: Datos y Perfil */}
-          <div className="form-section-title flex items-center gap-2 mt-4">
-            <UserCheck size={16} className="text-blue-600" />
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+            <UserCheck size={16} style={{ color: '#2563eb' }} />
             <span>2. Datos del Usuario y Permisos</span>
           </div>
 
           <div className="form-grid-symmetrical cols-3">
-            <div className="form-group col-span-2">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Nombre Completo o Descripción</label>
               <input
                 type="text"
@@ -522,72 +545,100 @@ export default function UsuariosPage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Rol / Perfil</label>
+              <label className="form-label">
+                Rol en el Sistema <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <select
-                className="form-select"
+                className="form-input"
                 value={formCodRol}
                 onChange={(e) => setFormCodRol(e.target.value)}
+                required
               >
                 <option value="01">01 - Administrador</option>
                 <option value="02">02 - Contador</option>
-                <option value="03">03 - Operador / Auxiliar</option>
+                <option value="03">03 - Auxiliar Contable</option>
+                <option value="04">04 - Facturación / Ventas</option>
               </select>
             </div>
-          </div>
 
-          <div className="form-grid-symmetrical cols-3 mt-2">
             <div className="form-group">
               <label className="form-label">Punto de Venta</label>
               <input
                 type="text"
-                className="form-input font-mono text-center"
+                className="form-input font-mono"
                 value={formCodPuntoVenta}
                 onChange={(e) => setFormCodPuntoVenta(e.target.value)}
-                maxLength={4}
                 placeholder="001"
+                maxLength={10}
               />
             </div>
           </div>
 
-          {/* Sección 3: Asignación de Empresas */}
-          <div className="form-section-title flex items-center justify-between mt-4">
-            <div className="flex items-center gap-2">
-              <Building2 size={16} className="text-blue-600" />
-              <span>3. Empresas Asignadas ({formSelectedCompanies.size})</span>
+          {/* Sección 3: Empresas Asignadas */}
+          <div
+            className="form-section-title"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Building2 size={16} style={{ color: '#2563eb' }} />
+              <span>
+                3. Empresas Asignadas ({formSelectedCompanies.size} seleccionada
+                {formSelectedCompanies.size === 1 ? '' : 's'})
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-xs">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
                 type="button"
-                className="text-blue-600 hover:underline font-semibold"
                 onClick={handleSelectAllCompanies}
+                className="btn-link-action"
               >
-                Seleccionar todas
+                Seleccionar Todas
               </button>
-              <span>|</span>
+              <span style={{ color: '#cbd5e1' }}>|</span>
               <button
                 type="button"
-                className="text-slate-500 hover:underline"
                 onClick={handleDeselectAllCompanies}
+                className="btn-link-action"
+                style={{ color: '#64748b' }}
               >
-                Desmarcar todas
+                Desmarcar Todas
               </button>
             </div>
           </div>
 
-          <div className="mb-2">
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+            <Search size={16} className="search-icon" />
             <input
               type="text"
-              className="form-input text-xs"
-              placeholder="Filtrar empresas por nombre, NIT o registro..."
+              placeholder="Filtrar empresas por nombre, código o NIT..."
               value={companySearch}
               onChange={(e) => setCompanySearch(e.target.value)}
+              className="input-busqueda"
+              style={{ fontSize: '0.85rem' }}
             />
           </div>
 
-          <div className="border border-slate-200 rounded-lg p-2 max-h-48 overflow-y-auto bg-slate-50/50 space-y-1">
+          <div
+            style={{
+              maxHeight: '180px',
+              overflowY: 'auto',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '6px',
+              background: '#f8fafc',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
             {filteredModalCompanies.length === 0 ? (
-              <div className="text-center py-4 text-xs text-muted">
-                No se encontraron empresas con ese filtro
+              <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                No se encontraron empresas activas
               </div>
             ) : (
               filteredModalCompanies.map((c) => {
@@ -596,23 +647,35 @@ export default function UsuariosPage() {
                   <div
                     key={c.cod_emp}
                     onClick={() => toggleCompanySelection(c.cod_emp)}
-                    className={`flex items-center justify-between p-2 rounded-md cursor-pointer text-xs transition-colors ${
-                      isChecked
-                        ? 'bg-blue-50 border border-blue-200 text-blue-900 font-medium'
-                        : 'hover:bg-slate-100 text-slate-700'
-                    }`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      background: isChecked ? '#eff6ff' : '#ffffff',
+                      border: isChecked ? '1px solid #bfdbfe' : '1px solid #f1f5f9',
+                      color: isChecked ? '#1e40af' : '#1e293b',
+                      transition: 'all 0.15s ease',
+                    }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {isChecked ? (
-                        <CheckSquare size={16} className="text-blue-600 flex-shrink-0" />
+                        <CheckSquare size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
                       ) : (
-                        <Square size={16} className="text-slate-400 flex-shrink-0" />
+                        <Square size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
                       )}
                       <span>
                         <strong>#{c.cod_emp}</strong> - {c.nom_emp}
                       </span>
                     </div>
-                    {c.nit && <span className="font-mono text-muted text-xs">{c.nit}</span>}
+                    {c.nit && (
+                      <span className="font-mono text-muted" style={{ fontSize: '0.75rem' }}>
+                        {c.nit}
+                      </span>
+                    )}
                   </div>
                 );
               })
@@ -620,7 +683,7 @@ export default function UsuariosPage() {
           </div>
 
           {/* Botones de Acción */}
-          <div className="modal-actions mt-6">
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
             <button
               type="button"
               className="btn-secundario"
@@ -648,28 +711,45 @@ export default function UsuariosPage() {
         title="Confirmar Eliminación de Usuario"
         maxWidth="md"
       >
-        <div className="p-2">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-red-50 text-red-600 rounded-full flex-shrink-0">
+        <div style={{ padding: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+            <div
+              style={{
+                padding: '12px',
+                background: '#fef2f2',
+                color: '#dc2626',
+                borderRadius: '50%',
+                flexShrink: 0,
+              }}
+            >
               <AlertTriangle size={24} />
             </div>
             <div>
-              <h4 className="font-bold text-slate-800 text-base mb-1">
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
                 ¿Eliminar al usuario '{userToDelete?.nom_usu}'?
               </h4>
-              <p className="text-sm text-slate-600 mb-3">
+              <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
                 Esta acción eliminará de forma permanente el usuario y revocará todos sus accesos a
                 las empresas asignadas. Esta acción no se puede deshacer.
               </p>
               {userToDelete?.desc_usu && (
-                <div className="p-2 bg-slate-100 rounded text-xs text-slate-600 mb-2">
+                <div
+                  style={{
+                    padding: '8px 12px',
+                    background: '#f8fafc',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    color: '#475569',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
                   <strong>Nombre asociado:</strong> {userToDelete.desc_usu}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="modal-actions mt-6">
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
             <button
               type="button"
               className="btn-secundario"

@@ -2269,6 +2269,11 @@ button:disabled {
   color: #0369a1;
 }
 
+.badge-primary {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .badge-neutral {
   background: #f1f5f9;
   color: #475569;
