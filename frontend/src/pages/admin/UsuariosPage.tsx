@@ -93,7 +93,7 @@ export default function UsuariosPage() {
   // Filtrado de usuarios
   const filteredUsers = useMemo(() => {
     return users.filter((u) =>
-      matchesSearchTokens([u.nom_usu, u.desc_usu, u.cod_rol, u.cod_punto_venta], searchTerm)
+      matchesSearchTokens([u.nom_usu, u.desc_usu, u.cod_rol], searchTerm)
     );
   }, [users, searchTerm]);
 
@@ -311,16 +311,6 @@ export default function UsuariosPage() {
       ),
     },
     {
-      key: 'cod_punto_venta',
-      header: 'Punto de Venta',
-      align: 'center',
-      render: (u) => (
-        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#475569' }}>
-          {u.cod_punto_venta || '001'}
-        </span>
-      ),
-    },
-    {
       key: 'total_empresas',
       header: 'Empresas Asignadas',
       align: 'center',
@@ -466,7 +456,7 @@ export default function UsuariosPage() {
           <div className="form-grid-symmetrical cols-2">
             <div className="form-group">
               <label className="form-label">
-                Usuario (nom_usu) <span style={{ color: '#ef4444' }}>*</span>
+                Usuario <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
@@ -531,8 +521,8 @@ export default function UsuariosPage() {
             <span>2. Datos del Usuario y Permisos</span>
           </div>
 
-          <div className="form-grid-symmetrical cols-3">
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+          <div className="form-grid-symmetrical cols-2">
+            <div className="form-group">
               <label className="form-label">Nombre Completo o Descripción</label>
               <input
                 type="text"
@@ -559,18 +549,6 @@ export default function UsuariosPage() {
                 <option value="03">03 - Auxiliar Contable</option>
                 <option value="04">04 - Facturación / Ventas</option>
               </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Punto de Venta</label>
-              <input
-                type="text"
-                className="form-input font-mono"
-                value={formCodPuntoVenta}
-                onChange={(e) => setFormCodPuntoVenta(e.target.value)}
-                placeholder="001"
-                maxLength={10}
-              />
             </div>
           </div>
 
