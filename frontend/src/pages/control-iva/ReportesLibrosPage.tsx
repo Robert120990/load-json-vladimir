@@ -561,7 +561,9 @@ export default function ReportesLibrosPage() {
                   </span>
                 </div>
                 <div className="tax-kpi-card">
-                  <span className="kpi-label">Pago a Cuenta (1.75%)</span>
+                  <span className="kpi-label">
+                    Pago a Cuenta ({liquidacion.pagoCuenta.porcentaje != null ? `${liquidacion.pagoCuenta.porcentaje}%` : `${(liquidacion.pagoCuenta.tasa * 100).toFixed(2)}%`})
+                  </span>
                   <span className="kpi-value text-purple">
                     ${liquidacion.pagoCuenta.totalPagoCuentaAPagar.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>

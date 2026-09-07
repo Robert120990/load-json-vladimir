@@ -580,7 +580,10 @@ export function exportTaxSettlementToPdf(report: TaxSettlementSummary) {
     ['(+) Ingresos Gravados Netos Ventas al Consumidor Final', formatMoney(report.pagoCuenta.ingresosGravados.consumidorFinalNeto)],
     ['(+) Ingresos por Exportaciones', formatMoney(report.pagoCuenta.ingresosGravados.exportaciones)],
     [{ content: 'BASE IMPONIBLE TOTAL INGRESOS GRAVADOS', styles: { fontStyle: 'bold' } }, { content: formatMoney(report.pagoCuenta.ingresosGravados.totalBaseImponible), styles: { fontStyle: 'bold' } }],
-    ['Porcentaje / Tasa de Pago a Cuenta (Art. 151 Código Tributario)', '1.75 %'],
+    [
+      'Porcentaje / Tasa de Pago a Cuenta (Art. 151 Código Tributario)',
+      `${report.pagoCuenta.porcentaje != null ? report.pagoCuenta.porcentaje.toFixed(2) : (report.pagoCuenta.tasa * 100).toFixed(2)} %`,
+    ],
     [
       { content: 'TOTAL PAGO A CUENTA DETERMINADO A ENTERAR', styles: { fontStyle: 'bold', fillColor: [238, 242, 255] } },
       { content: formatMoney(report.pagoCuenta.totalPagoCuentaAPagar), styles: { fontStyle: 'bold', textColor: [37, 99, 235], fillColor: [238, 242, 255] } },

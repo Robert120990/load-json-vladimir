@@ -309,7 +309,7 @@ export default function DashboardPage() {
             )}
             <div className="kpi-detail-footer">
               <span>
-                <strong>Pago a Cuenta (1.75%):</strong>{' '}
+                <strong>Pago a Cuenta ({data?.liquidacionEstimada?.porcentajePagoCuenta ?? 1.75}%):</strong>{' '}
                 {formatMoney(data?.liquidacionEstimada?.pagoCuentaEstimado || 0)}
               </span>
             </div>
@@ -504,7 +504,9 @@ export default function DashboardPage() {
               </div>
 
               <div className="liq-row">
-                <span className="liq-concept">Pago a Cuenta ISR (1.75% Art. 151 C.T.)</span>
+                <span className="liq-concept">
+                  Pago a Cuenta ISR ({data?.liquidacionEstimada?.porcentajePagoCuenta ?? 1.75}% Art. 151 C.T.)
+                </span>
                 <span className="liq-amount font-mono">
                   {formatMoney(data?.liquidacionEstimada?.pagoCuentaEstimado || 0)}
                 </span>

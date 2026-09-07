@@ -728,7 +728,10 @@ export async function getLiquidacionImpuestos(
   const ingGravadosContribuyentes = Number(contribuyentes.totales.gravadasVentas) || 0;
   const exportaciones = Number(consumidorFinal.totales.gravadasExportaciones) || 0;
   const totalBaseImponible = Number((ingGravadosContribuyentes + cfGravadaNeta + exportaciones).toFixed(2));
-  const tasa = 0.0175; // 1.75%
+  const pctPagoCuenta = Number((empresa as any).porcentaje_pago_cuenta) > 0
+    ? Number((empresa as any).porcentaje_pago_cuenta)
+    : 1.75;
+  const tasa = Number((pctPagoCuenta / 100).toFixed(4));
   const pagoCuentaDeterminado = Number((totalBaseImponible * tasa).toFixed(2));
   const retencionesRenta = 0;
   const totalPagoCuentaAPagar = pagoCuentaDeterminado;
@@ -780,6 +783,7 @@ export async function getLiquidacionImpuestos(
         totalBaseImponible,
       },
       tasa,
+      porcentaje: pctPagoCuenta,
       pagoCuentaDeterminado,
       retencionesRenta,
       totalPagoCuentaAPagar,

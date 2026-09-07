@@ -272,6 +272,7 @@ export interface TaxSettlementSummary {
       totalBaseImponible: number;
     };
     tasa: number;
+    porcentaje?: number;
     pagoCuentaDeterminado: number;
     retencionesRenta: number;
     totalPagoCuentaAPagar: number;
@@ -331,6 +332,7 @@ export interface DashboardData {
     ivaAPagar: number;
     remanenteFavor: number;
     pagoCuentaEstimado: number;
+    porcentajePagoCuenta?: number;
     totalAPagarFisco: number;
   };
   tendenciaMensual: Array<{

@@ -426,7 +426,10 @@ export function exportTaxSettlementToExcel(report: TaxSettlementSummary) {
     ['(+) Ingresos Gravados Netos Ventas al Consumidor Final', report.pagoCuenta.ingresosGravados.consumidorFinalNeto],
     ['(+) Ingresos por Exportaciones', report.pagoCuenta.ingresosGravados.exportaciones],
     ['BASE IMPONIBLE TOTAL INGRESOS GRAVADOS', report.pagoCuenta.ingresosGravados.totalBaseImponible],
-    ['Tasa Legal de Pago a Cuenta (1.75%)', '1.75%'],
+    [
+      `Tasa Legal de Pago a Cuenta (${report.pagoCuenta.porcentaje != null ? `${report.pagoCuenta.porcentaje}%` : `${(report.pagoCuenta.tasa * 100).toFixed(2)}%`})`,
+      `${report.pagoCuenta.porcentaje != null ? `${report.pagoCuenta.porcentaje}%` : `${(report.pagoCuenta.tasa * 100).toFixed(2)}%`}`,
+    ],
     ['TOTAL PAGO A CUENTA DETERMINADO A ENTERAR', report.pagoCuenta.totalPagoCuentaAPagar],
     [],
     ['3. RESUMEN GENERAL DE IMPUESTOS A PAGAR AL FISCO (MINISTERIO DE HACIENDA)'],

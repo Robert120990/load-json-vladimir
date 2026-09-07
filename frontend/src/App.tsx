@@ -15,6 +15,8 @@ import FirmasContablesPage from './pages/contabilidad/FirmasContablesPage';
 import CorrelativosContablesPage from './pages/contabilidad/CorrelativosContablesPage';
 import ReportesContablesPage from './pages/contabilidad/ReportesContablesPage';
 import AsignacionEmpresasPage from './pages/admin/AsignacionEmpresasPage';
+import EmpresasPage from './pages/admin/EmpresasPage';
+import UsuariosPage from './pages/admin/UsuariosPage';
 import Login from './pages/Login';
 import VentasPage from './pages/VentasPage';
 
@@ -46,7 +48,27 @@ export default function App() {
         />
         <Route
           path="/admin"
-          element={<Navigate to="/admin/asignacion-empresas" replace />}
+          element={<Navigate to="/admin/empresas" replace />}
+        />
+        <Route
+          path="/admin/empresas"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <EmpresasPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/usuarios"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <UsuariosPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
         />
         <Route
           path="/admin/asignacion-empresas"

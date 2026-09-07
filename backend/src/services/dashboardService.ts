@@ -45,6 +45,7 @@ export interface DashboardData {
     ivaAPagar: number;
     remanenteFavor: number;
     pagoCuentaEstimado: number;
+    porcentajePagoCuenta?: number;
     totalAPagarFisco: number;
   };
   tendenciaMensual: Array<{
@@ -142,7 +143,7 @@ export async function getDashboardData(
   ] = await Promise.all([
     // Empresa
     pool.query(
-      'SELECT cod_emp, nom_emp, razon_social, nit, reg_fiscal FROM empresas WHERE cod_emp = ? LIMIT 1',
+      'SELECT cod_emp, nom_emp, razon_social, nit, reg_fiscal, COALESCE(porcentaje_pago_cuenta, 1.75) AS porcentaje_pago_cuenta FROM empresas WHERE cod_emp = ? LIMIT 1',
       [codEmp],
     ).catch((err) => {
       console.warn('[Dashboard] Error al consultar empresa:', err.message);
@@ -362,9 +363,13 @@ export async function getDashboardData(
   const ivaAPagar = diferenciaIva > 0 ? diferenciaIva : 0;
   const remanenteFavor = diferenciaIva < 0 ? Math.abs(diferenciaIva) : 0;
 
-  // Pago a cuenta (1.75% sobre base imponible de ventas)
+  // Pago a cuenta dinámico según tasa configurada en la empresa (default 1.75%)
+  const pctPagoCuenta = Number((empresaRaw as any)?.porcentaje_pago_cuenta) > 0
+    ? Number((empresaRaw as any)?.porcentaje_pago_cuenta)
+    : 1.75;
+  const tasaPagoCuenta = pctPagoCuenta / 100;
   const baseImponibleVentas = Number((Number(ventStats.ventasContribuyentes) + cfNet).toFixed(2));
-  const pagoCuentaEstimado = Number((baseImponibleVentas * 0.0175).toFixed(2));
+  const pagoCuentaEstimado = Number((baseImponibleVentas * tasaPagoCuenta).toFixed(2));
   const totalAPagarFisco = Number((ivaAPagar + pagoCuentaEstimado).toFixed(2));
 
   // Indexar histórico compras por periodoKey
@@ -439,6 +444,7 @@ export async function getDashboardData(
       ivaAPagar,
       remanenteFavor,
       pagoCuentaEstimado,
+      porcentajePagoCuenta: pctPagoCuenta,
       totalAPagarFisco,
     },
     tendenciaMensual,

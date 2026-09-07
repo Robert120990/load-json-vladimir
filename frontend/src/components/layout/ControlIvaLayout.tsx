@@ -75,6 +75,16 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
             group: 'Administración',
             items: [
               {
+                path: '/admin/empresas',
+                label: 'Gestión de Empresas',
+                icon: Building2,
+              },
+              {
+                path: '/admin/usuarios',
+                label: 'Gestión de Usuarios',
+                icon: Users,
+              },
+              {
                 path: '/admin/asignacion-empresas',
                 label: 'Asignación de Empresas',
                 icon: ShieldCheck,
@@ -243,6 +253,10 @@ export default function ControlIvaLayout({ children }: ControlIvaLayoutProps) {
               <span className="breadcrumb-page">
                 {location.pathname === '/dashboard'
                   ? 'Dashboard'
+                  : location.pathname.includes('/admin/empresas')
+                  ? 'Gestión de Empresas'
+                  : location.pathname.includes('/admin/usuarios')
+                  ? 'Gestión de Usuarios'
                   : location.pathname.includes('/admin/asignacion-empresas')
                   ? 'Asignación de Empresas'
                   : location.pathname.includes('/contabilidad/partidas')

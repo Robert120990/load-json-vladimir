@@ -41,8 +41,28 @@ export interface SeleccionEmpresaResponse {
 export interface AdminUserSummary {
   nom_usu: string;
   desc_usu: string | null;
+  cod_rol?: string;
+  cod_punto_venta?: string;
   total_empresas: number;
   activas: number;
+  empresas_ids?: number[];
+}
+
+export interface CreateUserPayload {
+  nom_usu: string;
+  desc_usu?: string;
+  password: string;
+  cod_rol?: string;
+  cod_punto_venta?: string;
+  codEmpresas?: number[];
+}
+
+export interface UpdateUserPayload {
+  desc_usu?: string;
+  password?: string;
+  cod_rol?: string;
+  cod_punto_venta?: string;
+  codEmpresas?: number[];
 }
 
 export interface CompanyAssignment {
@@ -51,6 +71,48 @@ export interface CompanyAssignment {
   nit: string | null;
   reg_fiscal: string | null;
   assigned: boolean;
+}
+
+export interface EmpresaAdminDetail {
+  cod_emp: number;
+  nom_emp: string;
+  razon_social: string | null;
+  nit: string | null;
+  reg_fiscal: string | null;
+  dir_emp: string | null;
+  tel_emp: string | null;
+  tipo_costo: string;
+  contador: string;
+  activa: 'S' | 'N';
+  porcentaje_pago_cuenta: number;
+  total_usuarios?: number;
+}
+
+export interface CreateEmpresaPayload {
+  nom_emp: string;
+  razon_social?: string;
+  nit?: string;
+  reg_fiscal?: string;
+  dir_emp?: string;
+  tel_emp?: string;
+  tipo_costo?: string;
+  contador?: string;
+  activa?: 'S' | 'N';
+  porcentaje_pago_cuenta?: number;
+  usuariosAsignados?: string[];
+}
+
+export interface UpdateEmpresaPayload {
+  nom_emp?: string;
+  razon_social?: string;
+  nit?: string;
+  reg_fiscal?: string;
+  dir_emp?: string;
+  tel_emp?: string;
+  tipo_costo?: string;
+  contador?: string;
+  activa?: 'S' | 'N';
+  porcentaje_pago_cuenta?: number;
 }
 
 export interface SaveAssignmentsResponse {
