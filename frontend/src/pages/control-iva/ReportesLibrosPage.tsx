@@ -861,6 +861,7 @@ export default function ReportesLibrosPage() {
                         <th className="th-right">CREDITO<br />FISCAL</th>
                         <th className="th-right">ANTICIPO<br />A CTA.</th>
                         <th className="th-right">IVA<br />RETENIDO</th>
+                        <th className="th-right">IVA<br />PERCIBIDO</th>
                         <th className="th-right">TOTAL<br />COMPRAS</th>
                       </tr>
                     </thead>
@@ -878,6 +879,7 @@ export default function ReportesLibrosPage() {
                           <td className="text-right">{formatMoney(f.creditoFiscal)}</td>
                           <td className="text-right">{formatMoney(f.anticipoACta)}</td>
                           <td className="text-right">{formatMoney(f.ivaRetenido)}</td>
+                          <td className="text-right">{formatMoney(f.ivaPercibido)}</td>
                           <td className="text-right font-bold">{formatMoney(f.totalCompras)}</td>
                         </tr>
                       ))}
@@ -889,6 +891,7 @@ export default function ReportesLibrosPage() {
                         <td className="text-right font-bold">{formatMoney(reporte.totales.creditoFiscal)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.anticipoACta)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.ivaRetenido)}</td>
+                        <td className="text-right font-bold">{formatMoney(reporte.totales.ivaPercibido)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.totalCompras)}</td>
                       </tr>
                     </tbody>

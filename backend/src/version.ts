@@ -1,1 +1,1 @@
-export const BACKEND_VERSION = 'v24';
+export const BACKEND_VERSION = 'v25';

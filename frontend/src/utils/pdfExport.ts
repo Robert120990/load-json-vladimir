@@ -112,6 +112,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
       'CREDITO\nFISCAL',
       'ANTICIPO\nA CTA.',
       'IVA\nRETENIDO',
+      'IVA\nPERCIBIDO',
       'TOTAL\nCOMPRAS',
     ];
 
@@ -127,6 +128,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
       formatMoney(f.creditoFiscal),
       formatMoney(f.anticipoACta),
       formatMoney(f.ivaRetenido),
+      formatMoney(f.ivaPercibido),
       formatMoney(f.totalCompras),
     ]);
 
@@ -139,6 +141,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
       formatMoney(report.totales.creditoFiscal),
       formatMoney(report.totales.anticipoACta),
       formatMoney(report.totales.ivaRetenido),
+      formatMoney(report.totales.ivaPercibido),
       formatMoney(report.totales.totalCompras),
     ]);
 
@@ -146,21 +149,23 @@ export function exportVatBookToPdf(report: VatBookSummary) {
       head: [tableColumns],
       body: tableRows,
       startY: 35,
-      styles: { fontSize: 7, cellPadding: 1.5, halign: 'left' },
-      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      margin: { left: 14, right: 14 },
+      styles: { fontSize: 6.5, cellPadding: 1.2, halign: 'left' },
+      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 6.5 },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 10 },
-        1: { halign: 'center', cellWidth: 18 },
-        2: { cellWidth: 50 },
+        0: { halign: 'center', cellWidth: 9 },
+        1: { halign: 'center', cellWidth: 16 },
+        2: { cellWidth: 42 },
         3: { halign: 'center', cellWidth: 16 },
-        4: { cellWidth: 52 },
+        4: { cellWidth: 44 },
         5: { halign: 'right' },
         6: { halign: 'right' },
         7: { halign: 'right' },
         8: { halign: 'right' },
         9: { halign: 'right' },
         10: { halign: 'right' },
-        11: { halign: 'right', fontStyle: 'bold' },
+        11: { halign: 'right' },
+        12: { halign: 'right', fontStyle: 'bold' },
       },
       theme: 'grid',
     });
