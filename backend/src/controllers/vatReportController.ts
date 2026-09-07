@@ -114,6 +114,36 @@ export const getPlantillaOficialAnexo = asyncHandler(async (req: Request, res: R
     return;
   }
 
+  if (tipo === 'percepciones') {
+    res.json({
+      tipo: 'percepciones',
+      titulo: 'Plantilla Oficial Anexo 8 - Percepciones de IVA (1%) - F-07 Ministerio de Hacienda El Salvador',
+      columnas: [
+        'NIT AGENTE',
+        'FECHA DE EMISIÓN',
+        'TIPO DE DOCUMENTO',
+        'SERIE DE DOCUMENTO',
+        'NÚMERO DE DOCUMENTO',
+        'MONTO SUJETO',
+        'MONTO DE LA PERCEPCIÓN 1%',
+        'DUI DEL AGENTE',
+        'NÚMERO DEL ANEXO',
+      ],
+      ejemplo: [
+        '06141412921024',
+        '10/08/2026',
+        '03. COMPROBANTE DE CRÉDITO FISCAL',
+        '20261FF44CA75EE4406C89E12CE3CDF6E7E493BG',
+        'B86485CD-CF24-4A75-B193-6B42851CAF9E',
+        102.30,
+        1.02,
+        '',
+        8,
+      ],
+    });
+    return;
+  }
+
   // consumidor_final
   res.json({
     tipo: 'consumidor_final',

@@ -241,7 +241,7 @@ export async function fetchLibroContribuyentes(
 }
 
 export async function fetchAnexoHacienda(
-  tipo: 'compras' | 'contribuyentes' | 'consumidor_final',
+  tipo: 'compras' | 'contribuyentes' | 'consumidor_final' | 'percepciones',
   year: number,
   month: number,
 ): Promise<any[]> {
@@ -252,7 +252,7 @@ export async function fetchAnexoHacienda(
 }
 
 export async function fetchPlantillaAnexo(
-  tipo: 'compras' | 'contribuyentes' | 'consumidor_final',
+  tipo: 'compras' | 'contribuyentes' | 'consumidor_final' | 'percepciones',
 ): Promise<{ tipo: string; titulo: string; columnas: string[]; ejemplo: any[] }> {
   const { data } = await api.get('/control-iva/reportes/plantilla-anexo', {
     params: { tipo },

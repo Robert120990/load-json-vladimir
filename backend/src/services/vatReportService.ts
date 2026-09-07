@@ -509,7 +509,7 @@ export async function getLibroContribuyentes(
 
 export async function getAnexoHacienda(
   codEmp: number,
-  tipo: 'compras' | 'contribuyentes' | 'consumidor_final',
+  tipo: 'compras' | 'contribuyentes' | 'consumidor_final' | 'percepciones',
   year: number,
   month: number,
 ) {
@@ -569,6 +569,80 @@ export async function getAnexoHacienda(
         AND v.id_tipo_documento IN ('03', '05', '07')
         AND v.anulada = 0
       ORDER BY v.fecha ASC`,
+      [codEmp, year, month],
+    );
+    return rows;
+  }
+
+  if (tipo === 'percepciones') {
+    const [rows] = await pool.query(
+      `SELECT 
+        CASE 
+          WHEN LENGTH(COALESCE(
+            NULLIF(REGEXP_REPLACE(IFNULL(p.nit_proveedor, ''), '[^0-9]', ''), ''),
+            (
+              SELECT REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '')
+              FROM proveedores p2
+              WHERE p2.registro = p.registro
+                AND REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '') != ''
+              LIMIT 1
+            ),
+            ''
+          )) = 9 THEN ''
+          ELSE COALESCE(
+            NULLIF(REGEXP_REPLACE(IFNULL(p.nit_proveedor, ''), '[^0-9]', ''), ''),
+            (
+              SELECT REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '')
+              FROM proveedores p2
+              WHERE p2.registro = p.registro
+                AND REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '') != ''
+              LIMIT 1
+            ),
+            REGEXP_REPLACE(IFNULL(p.registro, ''), '[^0-9]', ''),
+            ''
+          )
+        END as nit_agente,
+        DATE_FORMAT(c.fecha, '%d/%m/%Y') as fecha_emision,
+        CASE 
+          WHEN c.id_tipo_documento = '09' THEN '05. NOTA DE CRÉDITO'
+          ELSE '03. COMPROBANTE DE CRÉDITO FISCAL'
+        END as tipo_documento,
+        COALESCE(NULLIF(c.sello_recepcion, ''), NULLIF(c.num_control, ''), '') as serie_documento,
+        c.documento as numero_documento,
+        ROUND(c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0), 2) as monto_sujeto,
+        ROUND(c.iva_percibido, 2) as monto_percepcion,
+        CASE 
+          WHEN LENGTH(COALESCE(
+            NULLIF(REGEXP_REPLACE(IFNULL(p.nit_proveedor, ''), '[^0-9]', ''), ''),
+            (
+              SELECT REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '')
+              FROM proveedores p2
+              WHERE p2.registro = p.registro
+                AND REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '') != ''
+              LIMIT 1
+            ),
+            ''
+          )) = 9 THEN COALESCE(
+            NULLIF(REGEXP_REPLACE(IFNULL(p.nit_proveedor, ''), '[^0-9]', ''), ''),
+            (
+              SELECT REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '')
+              FROM proveedores p2
+              WHERE p2.registro = p.registro
+                AND REGEXP_REPLACE(IFNULL(p2.nit_proveedor, ''), '[^0-9]', '') != ''
+              LIMIT 1
+            ),
+            ''
+          )
+          ELSE ''
+        END as dui_agente,
+        8 as numero_anexo
+      FROM compras_iva c
+      LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
+      WHERE c.cod_emp = ? 
+        AND c.periodo_ano = ? 
+        AND c.periodo_mes = ?
+        AND c.iva_percibido > 0
+      ORDER BY c.fecha ASC`,
       [codEmp, year, month],
     );
     return rows;

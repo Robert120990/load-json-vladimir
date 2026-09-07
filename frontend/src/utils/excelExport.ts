@@ -306,6 +306,19 @@ export function exportMhAnexoToCsv(rows: any[], tipo: string, periodo: string) {
     return;
   }
   const cleanedRows = rows.map((r) => {
+    if (tipo === 'percepciones') {
+      return {
+        'NIT AGENTE': r.nit_agente || '',
+        'FECHA DE EMISIÓN': r.fecha_emision || '',
+        'TIPO DE DOCUMENTO': r.tipo_documento || '',
+        'SERIE DE DOCUMENTO': r.serie_documento || '',
+        'NÚMERO DE DOCUMENTO': r.numero_documento || '',
+        'MONTO SUJETO': Number(r.monto_sujeto || 0),
+        'MONTO DE LA PERCEPCIÓN 1%': Number(r.monto_percepcion || 0),
+        'DUI DEL AGENTE': r.dui_agente || '',
+        'NÚMERO DEL ANEXO': Number(r.numero_anexo || 8),
+      };
+    }
     if (tipo === 'contribuyentes' && 'numero_resolucion' in r) {
       const { numero_resolucion, ...rest } = r;
       return rest;
@@ -318,7 +331,10 @@ export function exportMhAnexoToCsv(rows: any[], tipo: string, periodo: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `ANEXO_MH_${tipo.toUpperCase()}_${periodo}.csv`);
+  const filename = tipo === 'percepciones' 
+    ? `ANEXO_MH_8_PERCEPCIONES_${periodo}.csv`
+    : `ANEXO_MH_${tipo.toUpperCase()}_${periodo}.csv`;
+  link.setAttribute('download', filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -331,6 +347,19 @@ export function exportMhAnexoToExcel(rows: any[], tipo: string, periodo: string)
   }
   const wb = XLSX.utils.book_new();
   const cleanedRows = rows.map((r) => {
+    if (tipo === 'percepciones') {
+      return {
+        'NIT AGENTE': r.nit_agente || '',
+        'FECHA DE EMISIÓN': r.fecha_emision || '',
+        'TIPO DE DOCUMENTO': r.tipo_documento || '',
+        'SERIE DE DOCUMENTO': r.serie_documento || '',
+        'NÚMERO DE DOCUMENTO': r.numero_documento || '',
+        'MONTO SUJETO': Number(r.monto_sujeto || 0),
+        'MONTO DE LA PERCEPCIÓN 1%': Number(r.monto_percepcion || 0),
+        'DUI DEL AGENTE': r.dui_agente || '',
+        'NÚMERO DEL ANEXO': Number(r.numero_anexo || 8),
+      };
+    }
     if (tipo === 'contribuyentes' && 'numero_resolucion' in r) {
       const { numero_resolucion, ...rest } = r;
       return rest;
@@ -338,8 +367,18 @@ export function exportMhAnexoToExcel(rows: any[], tipo: string, periodo: string)
     return r;
   });
   const ws = XLSX.utils.json_to_sheet(cleanedRows);
-  XLSX.utils.book_append_sheet(wb, ws, `ANEXO_${tipo.toUpperCase()}`.slice(0, 31));
-  XLSX.writeFile(wb, `ANEXO_MH_${tipo.toUpperCase()}_${periodo}.xlsx`);
+  if (tipo === 'percepciones') {
+    ws['!cols'] = [
+      { wch: 18 }, { wch: 18 }, { wch: 38 }, { wch: 45 }, { wch: 42 },
+      { wch: 16 }, { wch: 26 }, { wch: 18 }, { wch: 20 },
+    ];
+  }
+  const sheetName = tipo === 'percepciones' ? 'ANEXO_8_PERCEPCIONES' : `ANEXO_${tipo.toUpperCase()}`.slice(0, 31);
+  const fileName = tipo === 'percepciones' 
+    ? `ANEXO_MH_8_PERCEPCIONES_${periodo}.xlsx` 
+    : `ANEXO_MH_${tipo.toUpperCase()}_${periodo}.xlsx`;
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, fileName);
 }
 
 export function exportBlankMhTemplate(columnas: string[], ejemplo: any[], tipo: string) {

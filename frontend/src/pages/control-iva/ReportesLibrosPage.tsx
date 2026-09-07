@@ -65,7 +65,23 @@ const MONEY_COLUMNS = new Set([
   'cuentas_a_terceros',
   'debito_fiscal_a_terceros',
   'total_ventas',
+  'monto_sujeto',
+  'monto_percepcion',
+  'MONTO SUJETO',
+  'MONTO DE LA PERCEPCIÓN 1%',
 ]);
+
+const ANEXO_HEADER_LABELS: Record<string, string> = {
+  nit_agente: 'NIT AGENTE',
+  fecha_emision: 'FECHA DE EMISIÓN',
+  tipo_documento: 'TIPO DE DOCUMENTO',
+  serie_documento: 'SERIE DE DOCUMENTO',
+  numero_documento: 'NÚMERO DE DOCUMENTO',
+  monto_sujeto: 'MONTO SUJETO',
+  monto_percepcion: 'MONTO DE LA PERCEPCIÓN 1%',
+  dui_agente: 'DUI DEL AGENTE',
+  numero_anexo: 'NÚMERO DEL ANEXO',
+};
 
 function formatAnexoCell(key: string, val: any): React.ReactNode {
   if (val === null || val === undefined || val === '') {
@@ -101,13 +117,18 @@ function formatAnexoCell(key: string, val: any): React.ReactNode {
     key === 'numero_resolucion' ||
     key === 'control_interno' ||
     key === 'documento_del' ||
-    key === 'documento_al'
+    key === 'documento_al' ||
+    key === 'serie_documento'
   ) {
     return <span className="font-mono text-xs text-primary">{String(val)}</span>;
   }
 
-  if (key === 'nit_o_nrc' || key === 'nit') {
+  if (key === 'nit_o_nrc' || key === 'nit' || key === 'nit_agente' || key === 'dui_agente') {
     return <span className="font-mono text-xs">{String(val)}</span>;
+  }
+
+  if (key === 'numero_anexo') {
+    return <span className="badge badge-info font-bold text-xs">{String(val)}</span>;
   }
 
   return <span>{String(val)}</span>;
@@ -153,9 +174,9 @@ export default function ReportesLibrosPage() {
   const [loading, setLoading] = useState(false);
 
   // MH Annexes Sub-tab
-  const [tipoAnexoMh, setTipoAnexoMh] = useState<'compras' | 'contribuyentes' | 'consumidor_final'>(
-    'compras',
-  );
+  const [tipoAnexoMh, setTipoAnexoMh] = useState<
+    'compras' | 'contribuyentes' | 'consumidor_final' | 'percepciones'
+  >('compras');
   const [anexoMhData, setAnexoMhData] = useState<any[]>([]);
   const [loadingAnexo, setLoadingAnexo] = useState(false);
 
@@ -736,6 +757,13 @@ export default function ReportesLibrosPage() {
             >
               Anexo 2 - Ventas Consumidor Final
             </button>
+            <button
+              type="button"
+              className={`subnav-btn ${tipoAnexoMh === 'percepciones' ? 'active' : ''}`}
+              onClick={() => setTipoAnexoMh('percepciones')}
+            >
+              Anexo 8 - Percepciones 1%
+            </button>
           </div>
 
           <div className="anexo-info-banner">
@@ -761,7 +789,7 @@ export default function ReportesLibrosPage() {
                           MONEY_COLUMNS.has(k) ? 'text-right' : ''
                         }`}
                       >
-                        {k.replace(/_/g, ' ')}
+                        {ANEXO_HEADER_LABELS[k] || k.replace(/_/g, ' ')}
                       </th>
                     ))
                   ) : (
