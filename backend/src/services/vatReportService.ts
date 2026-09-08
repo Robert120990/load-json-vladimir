@@ -24,9 +24,12 @@ export async function getLibroCompras(
       c.no_sujetas, c.credito_fiscal, c.anticipo_a_cuenta,
       c.iva_retenido, c.iva_percibido, c.retencion_a_terceros,
       c.compras_a_excluidos, c.rebajas_y_devoluciones,
-      p.nom_proveedor, p.registro as registro_proveedor, p.nit_proveedor
+      COALESCE(p.nom_proveedor, p_reg.nom_proveedor) as nom_proveedor,
+      COALESCE(p.registro, p_reg.registro, c.cod_proveedor) as registro_proveedor,
+      COALESCE(p.nit_proveedor, p_reg.nit_proveedor) as nit_proveedor
     FROM compras_iva c
     LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
+    LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))
     WHERE c.cod_emp = ? AND c.periodo_ano = ? AND c.periodo_mes = ?
     ORDER BY c.fecha ASC, c.llave ASC`,
     [codEmp, year, month],
@@ -522,8 +525,8 @@ export async function getAnexoHacienda(
         c.documento as numero_documento,
         COALESCE(c.num_control, '') as numero_control,
         COALESCE(c.sello_recepcion, '') as sello_recepcion,
-        IF(REPLACE(REPLACE(IFNULL(p.registro, ''), '-', ''), ' ', '') != '', p.registro, IFNULL(NULLIF(p.nit_proveedor, ''), c.cod_proveedor)) as nit,
-        COALESCE(p.nom_proveedor, 'PROVEEDOR VARIOS') as nombre,
+        IF(REPLACE(REPLACE(IFNULL(COALESCE(p.registro, p_reg.registro, c.cod_proveedor), ''), '-', ''), ' ', '') != '', COALESCE(p.registro, p_reg.registro, c.cod_proveedor), IFNULL(NULLIF(COALESCE(p.nit_proveedor, p_reg.nit_proveedor), ''), c.cod_proveedor)) as nit,
+        COALESCE(p.nom_proveedor, p_reg.nom_proveedor, 'PROVEEDOR VARIOS') as nombre,
         c.exentas_locales as compras_exentas,
         c.exentas_internaciones as internaciones_exentas,
         c.exentas_importaciones as importaciones_exentas,
@@ -534,6 +537,7 @@ export async function getAnexoHacienda(
         (c.exentas_locales + c.exentas_internaciones + c.exentas_importaciones + (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0)) + c.gravadas_internaciones + c.gravadas_importaciones + c.credito_fiscal) as total_compra
       FROM compras_iva c
       LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
+      LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))
       LEFT JOIN tipos_documento_compras tdc ON c.id_tipo_documento = tdc.id_tipo_documento
       WHERE c.cod_emp = ? AND c.periodo_ano = ? AND c.periodo_mes = ?
       ORDER BY c.fecha ASC`,
@@ -638,6 +642,7 @@ export async function getAnexoHacienda(
         8 as numero_anexo
       FROM compras_iva c
       LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
+      LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))
       WHERE c.cod_emp = ? 
         AND c.periodo_ano = ? 
         AND c.periodo_mes = ?

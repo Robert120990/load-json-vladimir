@@ -63,10 +63,13 @@ export async function listPurchases(
       c.rebajas_y_devoluciones, c.iva_rebajas_y_devoluciones,
       c.corr_maquina_registradora, c.iva_percibido,
       c.cod_sucursal, c.cod_punto_venta, c.num_control, c.sello_recepcion,
-      p.nom_proveedor, p.registro as registro_proveedor, p.nit_proveedor,
+      COALESCE(p.nom_proveedor, p_reg.nom_proveedor) as nom_proveedor,
+      COALESCE(p.registro, p_reg.registro, c.cod_proveedor) as registro_proveedor,
+      COALESCE(p.nit_proveedor, p_reg.nit_proveedor) as nit_proveedor,
       tdc.nombre as nom_tipo_documento
     FROM compras_iva c
     LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
+    LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))
     LEFT JOIN tipos_documento_compras tdc ON c.id_tipo_documento = tdc.id_tipo_documento
     ${whereClause}
     ORDER BY c.fecha DESC, c.llave DESC
@@ -97,10 +100,13 @@ export async function getPurchaseByLlave(llave: string, codEmp: number): Promise
       c.rebajas_y_devoluciones, c.iva_rebajas_y_devoluciones,
       c.corr_maquina_registradora, c.iva_percibido,
       c.cod_sucursal, c.cod_punto_venta, c.num_control, c.sello_recepcion,
-      p.nom_proveedor, p.registro as registro_proveedor, p.nit_proveedor,
+      COALESCE(p.nom_proveedor, p_reg.nom_proveedor) as nom_proveedor,
+      COALESCE(p.registro, p_reg.registro, c.cod_proveedor) as registro_proveedor,
+      COALESCE(p.nit_proveedor, p_reg.nit_proveedor) as nit_proveedor,
       tdc.nombre as nom_tipo_documento
     FROM compras_iva c
     LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
+    LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))
     LEFT JOIN tipos_documento_compras tdc ON c.id_tipo_documento = tdc.id_tipo_documento
     WHERE c.llave = ? AND c.cod_emp = ? LIMIT 1`,
     [llave, codEmp],
