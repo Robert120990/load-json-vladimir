@@ -177,6 +177,7 @@ export interface VatFinalConsumerBookRow {
   gravadasLocales: number;
   gravadasExportaciones: number;
   ivaPercibidoRetenido: number;
+  ivaRetenidoPercibido?: number;
   totalVentas: number;
   ventasCuentasTerceros: number;
 }

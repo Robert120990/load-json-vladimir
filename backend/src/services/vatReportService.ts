@@ -239,6 +239,8 @@ export async function getLibroConsumidorFinal(
   let totLocales = 0;
   let totExportaciones = 0;
   let totIvaRetPer = 0;
+  let totIvaRetenido = 0;
+  let totIvaPercibido = 0;
   let totVentas = 0;
   let totTerceros = 0;
   let totRebajas = 0;
@@ -251,7 +253,9 @@ export async function getLibroConsumidorFinal(
     const sumNoSujetas = items.reduce((acc, i) => acc + (Number(i.ventas_no_sujetas) || 0), 0);
     const sumLocales = items.reduce((acc, i) => acc + (Number(i.gravadas_locales) || 0), 0);
     const sumExport = items.reduce((acc, i) => acc + (Number(i.gravadas_exportacion) || 0), 0);
-    const sumRetPer = items.reduce((acc, i) => acc + (Number(i.iva_retenido) || 0) + (Number(i.iva_percibido) || 0), 0);
+    const sumRet = items.reduce((acc, i) => acc + (Number(i.iva_retenido) || 0), 0);
+    const sumPer = items.reduce((acc, i) => acc + (Number(i.iva_percibido) || 0), 0);
+    const sumRetPer = sumRet + sumPer;
     const sumTerceros = items.reduce((acc, i) => acc + (Number(i.cuentas_a_terceros) || 0), 0);
     const sumReb = items.reduce((acc, i) => acc + (Number(i.rebajas_y_devoluciones) || 0), 0);
 
@@ -262,6 +266,8 @@ export async function getLibroConsumidorFinal(
     totLocales += sumLocales;
     totExportaciones += sumExport;
     totIvaRetPer += sumRetPer;
+    totIvaRetenido += sumRet;
+    totIvaPercibido += sumPer;
     totVentas += totalRow;
     totTerceros += sumTerceros;
     totRebajas += sumReb;
@@ -277,6 +283,7 @@ export async function getLibroConsumidorFinal(
       gravadasLocales: Number(sumLocales.toFixed(2)),
       gravadasExportaciones: Number(sumExport.toFixed(2)),
       ivaPercibidoRetenido: Number(sumRetPer.toFixed(2)),
+      ivaRetenidoPercibido: Number(sumRetPer.toFixed(2)),
       totalVentas: totalRow,
       ventasCuentasTerceros: Number(sumTerceros.toFixed(2)),
     };
@@ -293,8 +300,8 @@ export async function getLibroConsumidorFinal(
       rebajasDevoluciones: Number(totRebajas.toFixed(2)),
       ventaGravada: ventaGravadaNeta,
       impuestoIva,
-      ivaRetenido: 0,
-      ivaPercibido: Number(totIvaRetPer.toFixed(2)),
+      ivaRetenido: Number(totIvaRetenido.toFixed(2)),
+      ivaPercibido: Number(totIvaPercibido.toFixed(2)),
     },
     resumenGeneral: {
       ventaBruta: Number(totLocales.toFixed(2)),
@@ -328,6 +335,7 @@ export async function getLibroConsumidorFinal(
       gravadasLocales: Number(totLocales.toFixed(2)),
       gravadasExportaciones: Number(totExportaciones.toFixed(2)),
       ivaPercibidoRetenido: Number(totIvaRetPer.toFixed(2)),
+      ivaRetenidoPercibido: Number(totIvaRetPer.toFixed(2)),
       totalVentas: Number(totVentas.toFixed(2)),
       ventasCuentasTerceros: Number(totTerceros.toFixed(2)),
     },

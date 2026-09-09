@@ -130,7 +130,7 @@ export function exportVatBookToExcel(report: VatBookSummary) {
         fila.ventasNoSujetas,
         fila.gravadasLocales,
         fila.gravadasExportaciones,
-        fila.ivaPercibidoRetenido,
+        fila.ivaRetenidoPercibido ?? fila.ivaPercibidoRetenido ?? 0,
         fila.totalVentas,
         fila.ventasCuentasTerceros,
       ]);
@@ -146,7 +146,7 @@ export function exportVatBookToExcel(report: VatBookSummary) {
       report.totales.ventasNoSujetas,
       report.totales.gravadasLocales,
       report.totales.gravadasExportaciones,
-      report.totales.ivaPercibidoRetenido,
+      report.totales.ivaRetenidoPercibido ?? report.totales.ivaPercibidoRetenido ?? 0,
       report.totales.totalVentas,
       report.totales.ventasCuentasTerceros,
     ]);
@@ -225,6 +225,8 @@ export function exportVatBookToExcel(report: VatBookSummary) {
     allRows.push(['REB. Y DEV. S/VENTA', cr.calculoDebitoFiscal?.rebajasDevoluciones]);
     allRows.push(['VENTA GRAVADA NETA', cr.calculoDebitoFiscal?.ventaGravada]);
     allRows.push(['IMPUESTO IVA', cr.calculoDebitoFiscal?.impuestoIva]);
+    allRows.push(['IVA RETENIDO', cr.calculoDebitoFiscal?.ivaRetenido]);
+    allRows.push(['IVA PERCIBIDO', cr.calculoDebitoFiscal?.ivaPercibido]);
     allRows.push(['TOTAL VENTAS', cr.resumenGeneral?.totalVentas]);
   } else {
     const cr = report.cuadroResumen;

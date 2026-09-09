@@ -938,6 +938,7 @@ export default function ReportesLibrosPage() {
                         <th className="th-right">VENTAS<br />EXENTAS</th>
                         <th className="th-right">VENTAS NO<br />SUJETAS</th>
                         <th className="th-right">VENTAS GRAVADAS<br />LOCALES</th>
+                        <th className="th-right">IVA<br />RET/PER.</th>
                         <th className="th-right">TOTAL<br />VENTAS</th>
                         <th className="th-right">VENTAS A<br />TERCEROS</th>
                       </tr>
@@ -953,6 +954,7 @@ export default function ReportesLibrosPage() {
                           <td className="text-right">{formatMoney(f.ventasExentas)}</td>
                           <td className="text-right">{formatMoney(f.ventasNoSujetas)}</td>
                           <td className="text-right">{formatMoney(f.gravadasLocales)}</td>
+                          <td className="text-right">{formatMoney((f as any).ivaRetenidoPercibido ?? f.ivaPercibidoRetenido)}</td>
                           <td className="text-right font-bold">{formatMoney(f.totalVentas)}</td>
                           <td className="text-right">{formatMoney(f.ventasCuentasTerceros)}</td>
                         </tr>
@@ -962,6 +964,7 @@ export default function ReportesLibrosPage() {
                         <td className="text-right font-bold">{formatMoney(reporte.totales.ventasExentas)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.ventasNoSujetas)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.gravadasLocales)}</td>
+                        <td className="text-right font-bold">{formatMoney(reporte.totales.ivaRetenidoPercibido ?? reporte.totales.ivaPercibidoRetenido)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.totalVentas)}</td>
                         <td className="text-right font-bold">{formatMoney(reporte.totales.ventasCuentasTerceros)}</td>
                       </tr>
@@ -1104,6 +1107,14 @@ export default function ReportesLibrosPage() {
                           <strong className="text-primary">
                             {formatMoney(reporte.cuadroResumen.calculoDebitoFiscal?.impuestoIva)}
                           </strong>
+                        </div>
+                        <div className="row-calc">
+                          <span>IVA RETENIDO:</span>
+                          <strong>{formatMoney(reporte.cuadroResumen.calculoDebitoFiscal?.ivaRetenido)}</strong>
+                        </div>
+                        <div className="row-calc">
+                          <span>IVA PERCIBIDO:</span>
+                          <strong>{formatMoney(reporte.cuadroResumen.calculoDebitoFiscal?.ivaPercibido)}</strong>
                         </div>
                       </div>
 
