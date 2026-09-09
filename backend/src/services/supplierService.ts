@@ -99,13 +99,30 @@ export async function createSupplier(data: Partial<Supplier>, codEmp: number | n
     throw new ApiError(400, 'El nombre del proveedor es obligatorio');
   }
 
-  // Check duplicate
+  // Check duplicate code
   const [existing] = await pool.query(
     'SELECT cod_proveedor FROM proveedores WHERE cod_proveedor = ? LIMIT 1',
     [codProveedor],
   );
   if ((existing as unknown[]).length > 0) {
     throw new ApiError(400, `Ya existe un proveedor con el código ${codProveedor}`);
+  }
+
+  // Check duplicate NRC (registro)
+  const regLimpio = (data.registro || '').replace(/[-\s]/g, '').trim();
+  if (regLimpio) {
+    const [existingReg] = await pool.query(
+      `SELECT cod_proveedor, nom_proveedor FROM proveedores 
+       WHERE REPLACE(REPLACE(registro, '-', ''), ' ', '') = ? LIMIT 1`,
+      [regLimpio],
+    );
+    const dup = (existingReg as Array<{ cod_proveedor: string; nom_proveedor: string }>)[0];
+    if (dup) {
+      throw new ApiError(
+        400,
+        `Ya existe un proveedor con el NRC ${data.registro} (${dup.nom_proveedor} - Código: ${dup.cod_proveedor})`,
+      );
+    }
   }
 
   const insertCols = [
@@ -158,6 +175,25 @@ export async function updateSupplier(codProveedor: string, data: Partial<Supplie
   const nomProveedor = (data.nom_proveedor || '').trim().toUpperCase();
   if (!nomProveedor) {
     throw new ApiError(400, 'El nombre del proveedor es obligatorio');
+  }
+
+  // Check duplicate NRC (registro) if modified
+  if (data.registro !== undefined) {
+    const regLimpio = (data.registro || '').replace(/[-\s]/g, '').trim();
+    if (regLimpio) {
+      const [existingReg] = await pool.query(
+        `SELECT cod_proveedor, nom_proveedor FROM proveedores 
+         WHERE REPLACE(REPLACE(registro, '-', ''), ' ', '') = ? AND cod_proveedor != ? LIMIT 1`,
+        [regLimpio, codProveedor],
+      );
+      const dup = (existingReg as Array<{ cod_proveedor: string; nom_proveedor: string }>)[0];
+      if (dup) {
+        throw new ApiError(
+          400,
+          `Ya existe otro proveedor con el NRC ${data.registro} (${dup.nom_proveedor} - Código: ${dup.cod_proveedor})`,
+        );
+      }
+    }
   }
 
   const updateFields: string[] = [

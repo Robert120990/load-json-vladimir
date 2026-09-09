@@ -136,6 +136,12 @@ export default function DteUploader({ tipo, titulo }: Props) {
       return;
     }
 
+    if (archivosJson.length > 1500) {
+      toast.error(`Se seleccionaron ${archivosJson.length} archivos. El límite máximo es de 1,500 archivos por lote.`);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
     setArchivosPendientes(archivosJson);
     setConfirmacion('cargar');
   }
@@ -169,6 +175,11 @@ export default function DteUploader({ tipo, titulo }: Props) {
 
       if (archivosJson.length === 0) {
         toast.error('No se encontraron archivos .json en lo que arrastraste');
+        return;
+      }
+
+      if (archivosJson.length > 1500) {
+        toast.error(`Se seleccionaron ${archivosJson.length} archivos. El límite máximo es de 1,500 archivos por lote.`);
         return;
       }
 
@@ -282,9 +293,19 @@ export default function DteUploader({ tipo, titulo }: Props) {
     try {
       const resultados = await validar(tipo, validables);
       const nuevosEstados = { ...estados };
-      for (const resultado of resultados) {
-        nuevosEstados[resultado.id] = resultado.estado;
-      }
+      const nuevosItems = items.map((item) => {
+        const r = resultados.find((res) => res.id === item.id);
+        if (r) {
+          nuevosEstados[r.id] = r.estado;
+          return {
+            ...item,
+            error: r.error ?? (r.estado === 'valido' ? undefined : item.error),
+          };
+        }
+        return item;
+      });
+
+      setItems(nuevosItems);
       setEstados(nuevosEstados);
       setResumen(calcularResumen(nuevosEstados));
       toast.success('Validación completada');
@@ -409,7 +430,7 @@ export default function DteUploader({ tipo, titulo }: Props) {
             <p className="zona-arrastre-text">
               Arrastra y suelta aquí la carpeta o archivos <strong>.JSON</strong>
             </p>
-            <span className="zona-arrastre-subtext">o haz clic aquí para seleccionar desde tu equipo</span>
+            <span className="zona-arrastre-subtext">o haz clic aquí para seleccionar desde tu equipo (hasta 1,500 archivos por lote)</span>
             <div className="zona-arrastre-btn-wrap" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"

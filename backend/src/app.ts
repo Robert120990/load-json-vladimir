@@ -15,7 +15,7 @@ dotenv.config();
 export const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 app.get('/api/version', (_req, res) => {
   res.json({

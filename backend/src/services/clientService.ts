@@ -97,12 +97,29 @@ export async function createClient(data: Partial<Client>, codEmp: number | null)
     throw new ApiError(400, 'El nombre del cliente es obligatorio');
   }
 
-  // Check duplicate
+  // Check duplicate code
   const [existing] = await pool.query('SELECT cod_cliente FROM clientes WHERE cod_cliente = ? LIMIT 1', [
     codCliente,
   ]);
   if ((existing as unknown[]).length > 0) {
     throw new ApiError(400, `Ya existe un cliente con el código ${codCliente}`);
+  }
+
+  // Check duplicate NRC (registro)
+  const regLimpio = (data.registro || '').replace(/[-\s]/g, '').trim();
+  if (regLimpio) {
+    const [existingReg] = await pool.query(
+      `SELECT cod_cliente, nom_cliente FROM clientes 
+       WHERE REPLACE(REPLACE(registro, '-', ''), ' ', '') = ? LIMIT 1`,
+      [regLimpio],
+    );
+    const dup = (existingReg as Array<{ cod_cliente: string; nom_cliente: string }>)[0];
+    if (dup) {
+      throw new ApiError(
+        400,
+        `Ya existe un cliente con el NRC ${data.registro} (${dup.nom_cliente} - Código: ${dup.cod_cliente})`,
+      );
+    }
   }
 
   const insertCols = [
@@ -114,7 +131,7 @@ export async function createClient(data: Partial<Client>, codEmp: number | null)
 
   const insertVals = [
     codCliente,
-    codEmp ?? null,
+    codEmp ?? 1,
     nomCliente,
     (data.dir_cliente || '').trim().toUpperCase(),
     data.cod_dept ?? 1,
@@ -151,6 +168,25 @@ export async function updateClient(codCliente: string, data: Partial<Client>): P
   const nomCliente = (data.nom_cliente || '').trim().toUpperCase();
   if (!nomCliente) {
     throw new ApiError(400, 'El nombre del cliente es obligatorio');
+  }
+
+  // Check duplicate NRC (registro) if modified
+  if (data.registro !== undefined) {
+    const regLimpio = (data.registro || '').replace(/[-\s]/g, '').trim();
+    if (regLimpio) {
+      const [existingReg] = await pool.query(
+        `SELECT cod_cliente, nom_cliente FROM clientes 
+         WHERE REPLACE(REPLACE(registro, '-', ''), ' ', '') = ? AND cod_cliente != ? LIMIT 1`,
+        [regLimpio, codCliente],
+      );
+      const dup = (existingReg as Array<{ cod_cliente: string; nom_cliente: string }>)[0];
+      if (dup) {
+        throw new ApiError(
+          400,
+          `Ya existe otro cliente con el NRC ${data.registro} (${dup.nom_cliente} - Código: ${dup.cod_cliente})`,
+        );
+      }
+    }
   }
 
   const updateFields: string[] = [

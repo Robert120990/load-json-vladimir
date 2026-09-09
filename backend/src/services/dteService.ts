@@ -40,6 +40,7 @@ export type EstadoValidacion = 'valido' | 'duplicado' | 'cliente_no_existe' | 'p
 export interface ValidateResultado {
   id: number;
   estado: EstadoValidacion;
+  error?: string;
 }
 
 export interface SaveItem {
@@ -382,11 +383,12 @@ function mapearFila(
 }
 
 async function existeDuplicado(tipo: TipoDte, codEmp: number, documento: string): Promise<boolean> {
-  if (!documento) return false;
+  const docLimpio = (documento ?? '').trim();
+  if (!docLimpio) return false;
   const tabla = tipo === 'ventas' ? VENTAS_TABLA : COMPRAS_TABLA;
   const [rows] = await pool.query(
-    `SELECT 1 FROM ${tabla} WHERE cod_emp = ? AND documento = ? LIMIT 1`,
-    [codEmp, documento],
+    `SELECT 1 FROM ${tabla} WHERE cod_emp = ? AND (documento = ? OR num_control = ?) LIMIT 1`,
+    [codEmp, docLimpio, docLimpio],
   );
   return (rows as unknown[]).length > 0;
 }
@@ -450,17 +452,29 @@ export async function validarItems(
   codEmp: number,
 ): Promise<ValidateResultado[]> {
   const resultados: ValidateResultado[] = [];
+  const codigosVistosEnLote = new Set<string>();
 
   for (const item of items) {
+    const codGen = (item.codigoGeneracion ?? '').trim().toUpperCase();
     let estado: EstadoValidacion = 'valido';
+    let error: string | undefined;
 
-    if (await existeDuplicado(tipo, codEmp, item.codigoGeneracion ?? '')) {
+    if (codGen && codigosVistosEnLote.has(codGen)) {
       estado = 'duplicado';
+      error = 'Documento repetido dentro del mismo lote de carga';
+    } else if (await existeDuplicado(tipo, codEmp, codGen)) {
+      estado = 'duplicado';
+      error = 'El documento ya está registrado en el sistema';
     } else if (!(await evaluarContraparte(tipo, item.nitContraparte, item.nrcContraparte))) {
       estado = tipo === 'ventas' ? 'cliente_no_existe' : 'proveedor_no_existe';
+      error = tipo === 'ventas' ? 'El cliente no existe en la base de datos' : 'El proveedor no existe en la base de datos';
     }
 
-    resultados.push({ id: item.id, estado });
+    if (codGen && estado === 'valido') {
+      codigosVistosEnLote.add(codGen);
+    }
+
+    resultados.push({ id: item.id, estado, error });
   }
 
   return resultados;
@@ -496,6 +510,7 @@ export async function guardarItems(
 
     const resultados: SaveItemResultado[] = [];
     let clienteGenericoCache: string | null | undefined;
+    const codigosGuardadosEnLote = new Set<string>();
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -515,8 +530,16 @@ export async function guardarItems(
           );
           if (errorFecha) throw new Error(errorFecha);
         }
-        if (await existeDuplicado(tipo, codEmp, obtenerCodigoGeneracion(dte))) {
-          throw new Error('El documento ya existe (duplicado)');
+
+        const codGen = obtenerCodigoGeneracion(dte).trim().toUpperCase();
+        if (codGen && codigosGuardadosEnLote.has(codGen)) {
+          throw new Error('Documento repetido dentro del mismo lote de carga');
+        }
+        if (await existeDuplicado(tipo, codEmp, codGen)) {
+          throw new Error('El documento ya existe (duplicado en el sistema)');
+        }
+        if (codGen) {
+          codigosGuardadosEnLote.add(codGen);
         }
 
         const contraparte = obtenerContraparte(dte, tipo);

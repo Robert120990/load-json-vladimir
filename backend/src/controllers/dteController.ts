@@ -9,7 +9,7 @@ import { decodificarBuffer } from '../utils/decodificar';
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { files: 200, fileSize: 15 * 1024 * 1024 },
+  limits: { files: 1500, fileSize: 25 * 1024 * 1024 },
 });
 
 function parsearTipo(valor: unknown): TipoDte {

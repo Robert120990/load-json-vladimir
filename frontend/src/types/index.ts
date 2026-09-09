@@ -164,6 +164,7 @@ export type EstadoValidacion = 'valido' | 'duplicado' | 'cliente_no_existe' | 'p
 export interface ValidateResultado {
   id: number;
   estado: EstadoValidacion;
+  error?: string;
 }
 
 export interface SaveItem {
