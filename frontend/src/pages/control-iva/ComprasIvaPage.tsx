@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Calendar, CheckCircle2, Edit2, Eye, Plus, Settings2, Trash2 } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Edit2, Eye, Plus, Settings2, Trash2 } from 'lucide-react';
 import {
   createCompra,
   deleteCompra,
@@ -81,6 +81,7 @@ export default function ComprasIvaPage() {
 
   const selectedProveedorRef = useRef(formData.cod_proveedor);
   selectedProveedorRef.current = formData.cod_proveedor;
+  const rebajasInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSearchProveedores(query: string) {
     try {
@@ -233,6 +234,7 @@ export default function ComprasIvaPage() {
       sello_recepcion: '',
       gravadas_locales: 0,
       rebajas_y_devoluciones: 0,
+      iva_rebajas_y_devoluciones: 0,
       credito_fiscal: 0,
       exentas_locales: 0,
       no_sujetas: 0,
@@ -246,9 +248,29 @@ export default function ComprasIvaPage() {
     setModalMode('create');
   }
 
+  function esNotaCredito(tipo?: string): boolean {
+    if (!tipo) return false;
+    const clean = String(tipo).trim();
+    return clean === '09' || clean === '9';
+  }
+
   function abrirModalEditar(compra: PurchaseIva) {
     setSelectedCompra(compra);
-    setFormData({ ...compra });
+    const isNC = esNotaCredito(compra.id_tipo_documento);
+    const rebajas = Number(compra.rebajas_y_devoluciones) || 0;
+    const ivaRebajas =
+      compra.iva_rebajas_y_devoluciones != null && Number(compra.iva_rebajas_y_devoluciones) > 0
+        ? Number(compra.iva_rebajas_y_devoluciones)
+        : (isNC && rebajas > 0 ? Number((rebajas * 0.13).toFixed(2)) : 0);
+
+    setFormData({
+      ...compra,
+      id_tipo_documento: isNC ? '09' : (compra.id_tipo_documento || '02'),
+      rebajas_y_devoluciones: rebajas,
+      iva_rebajas_y_devoluciones: ivaRebajas,
+      gravadas_locales: isNC ? 0 : Number(compra.gravadas_locales) || 0,
+      credito_fiscal: isNC ? 0 : Number(compra.credito_fiscal) || 0,
+    });
     setFormErrors({});
     if (compra.cod_proveedor) {
       setProveedores((prev) => {
@@ -279,6 +301,50 @@ export default function ComprasIvaPage() {
     setDeleteModalOpen(true);
   }
 
+  function handleTipoDocumentoChange(newTipo: string) {
+    const isNC = esNotaCredito(newTipo);
+    setFormData((prev) => {
+      if (isNC) {
+        // Al seleccionar Nota de Crédito, la base va a rebajas_y_devoluciones
+        const baseVal = Number(prev.rebajas_y_devoluciones) || Number(prev.gravadas_locales) || 0;
+        const ivaVal =
+          Number(prev.iva_rebajas_y_devoluciones) ||
+          Number(prev.credito_fiscal) ||
+          Number((baseVal * 0.13).toFixed(2));
+        return {
+          ...prev,
+          id_tipo_documento: '09',
+          gravadas_locales: 0,
+          credito_fiscal: 0,
+          rebajas_y_devoluciones: baseVal,
+          iva_rebajas_y_devoluciones: ivaVal,
+        };
+      } else {
+        // Al cambiar de NC a otro documento, restaurar a gravadas_locales
+        const baseVal = Number(prev.gravadas_locales) || Number(prev.rebajas_y_devoluciones) || 0;
+        const ivaVal =
+          Number(prev.credito_fiscal) ||
+          Number(prev.iva_rebajas_y_devoluciones) ||
+          Number((baseVal * 0.13).toFixed(2));
+        return {
+          ...prev,
+          id_tipo_documento: newTipo,
+          gravadas_locales: baseVal,
+          credito_fiscal: ivaVal,
+          rebajas_y_devoluciones: 0,
+          iva_rebajas_y_devoluciones: 0,
+        };
+      }
+    });
+
+    if (isNC) {
+      setTimeout(() => {
+        rebajasInputRef.current?.focus();
+        rebajasInputRef.current?.select();
+      }, 100);
+    }
+  }
+
   // Recalcular crédito fiscal cuando cambian gravadas locales o descuentos
   function handleValoresChange(gravadas: number, descuento: number) {
     const baseNeta = Math.max(0, gravadas - descuento);
@@ -292,12 +358,22 @@ export default function ComprasIvaPage() {
   }
 
   function calcularBaseNeta(): number {
+    if (esNotaCredito(formData.id_tipo_documento)) {
+      return Number(formData.rebajas_y_devoluciones) || 0;
+    }
     const grav = Number(formData.gravadas_locales) || 0;
     const desc = Number(formData.rebajas_y_devoluciones) || 0;
     return Math.max(0, Number((grav - desc).toFixed(2)));
   }
 
   function calcularTotalCompra(): number {
+    if (esNotaCredito(formData.id_tipo_documento)) {
+      const rebajas = Number(formData.rebajas_y_devoluciones) || 0;
+      const ivaReb = Number(formData.iva_rebajas_y_devoluciones) || 0;
+      const exen = Number(formData.exentas_locales) || 0;
+      const nosuj = Number(formData.no_sujetas) || 0;
+      return Number((rebajas + ivaReb + exen + nosuj).toFixed(2));
+    }
     const baseNeta = calcularBaseNeta();
     const cred = Number(formData.credito_fiscal) || 0;
     const exen = Number(formData.exentas_locales) || 0;
@@ -389,21 +465,29 @@ export default function ComprasIvaPage() {
     {
       key: 'tipoDoc',
       header: 'Tipo Doc.',
-      render: (row) => (
-        <span className="badge badge-neutral text-xs">
-          {row.nom_tipo_documento || row.id_tipo_documento}
-        </span>
-      ),
+      render: (row) => {
+        const isNC = esNotaCredito(row.id_tipo_documento);
+        return (
+          <span className={`badge ${isNC ? 'badge-warning font-semibold' : 'badge-neutral'} text-xs`}>
+            {row.nom_tipo_documento || row.id_tipo_documento}
+          </span>
+        );
+      },
     },
     {
       key: 'gravadas_locales',
       header: 'Gravadas',
       align: 'right',
-      render: (row) => `$ ${(Number(row.gravadas_locales) || 0).toFixed(2)}`,
+      render: (row) => {
+        if (esNotaCredito(row.id_tipo_documento)) {
+          return <span className="text-muted">$ 0.00</span>;
+        }
+        return `$ ${(Number(row.gravadas_locales) || 0).toFixed(2)}`;
+      },
     },
     {
       key: 'rebajas_y_devoluciones',
-      header: 'Descuento',
+      header: 'Descuento / NC',
       align: 'right',
       render: (row) =>
         Number(row.rebajas_y_devoluciones) > 0 ? (
@@ -418,15 +502,31 @@ export default function ComprasIvaPage() {
       key: 'credito_fiscal',
       header: 'IVA Crédito',
       align: 'right',
-      render: (row) => (
-        <strong className="text-success">$ {(Number(row.credito_fiscal) || 0).toFixed(2)}</strong>
-      ),
+      render: (row) => {
+        if (esNotaCredito(row.id_tipo_documento)) {
+          const ivaNC = Number(row.iva_rebajas_y_devoluciones) || Number(row.credito_fiscal) || 0;
+          return ivaNC > 0 ? (
+            <strong className="text-danger font-bold">-$ {ivaNC.toFixed(2)}</strong>
+          ) : (
+            <span className="text-muted">$ 0.00</span>
+          );
+        }
+        return (
+          <strong className="text-success">$ {(Number(row.credito_fiscal) || 0).toFixed(2)}</strong>
+        );
+      },
     },
     {
       key: 'total',
       header: 'Total Compra',
       align: 'right',
       render: (row) => {
+        if (esNotaCredito(row.id_tipo_documento)) {
+          const totNC =
+            (Number(row.rebajas_y_devoluciones) || 0) +
+            (Number(row.iva_rebajas_y_devoluciones) || Number(row.credito_fiscal) || 0);
+          return <strong className="text-danger font-bold">-$ {totNC.toFixed(2)}</strong>;
+        }
         const grav = Number(row.gravadas_locales) || 0;
         const desc = Number(row.rebajas_y_devoluciones) || 0;
         const tot =
@@ -597,7 +697,7 @@ export default function ComprasIvaPage() {
                 <select
                   className="form-input"
                   value={formData.id_tipo_documento ?? '02'}
-                  onChange={(e) => setFormData({ ...formData, id_tipo_documento: e.target.value })}
+                  onChange={(e) => handleTipoDocumentoChange(e.target.value)}
                 >
                   {docTypes.map((t) => (
                     <option key={t.id_tipo_documento} value={t.id_tipo_documento}>
@@ -693,6 +793,21 @@ export default function ComprasIvaPage() {
               </div>
             </div>
 
+            {/* Aviso visual guiado al seleccionar Nota de Crédito */}
+            {esNotaCredito(formData.id_tipo_documento) && (
+              <div className="nc-alert-banner">
+                <AlertCircle size={22} className="flex-shrink-0 text-danger" />
+                <div>
+                  <div className="font-semibold text-danger">Nota de Crédito en Compras Seleccionada</div>
+                  <div className="text-xs mt-0.5">
+                    Ingrese el valor en <strong>"Monto Base Nota de Crédito"</strong> y el IVA en{' '}
+                    <strong>"IVA Rebajas / Devoluciones"</strong>. Los campos parpadean para facilitar su ubicación.
+                    Estos valores restarán Crédito Fiscal en el Libro de Compras y la Liquidación de IVA.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Sección 2: Importes, Descuentos e Impuestos */}
             <div className="form-section-title">2. Valores, Descuentos e Impuestos</div>
             <div className="form-grid-symmetrical cols-3">
@@ -702,8 +817,11 @@ export default function ComprasIvaPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  className="form-input"
-                  value={formData.gravadas_locales ?? 0}
+                  className={`form-input ${
+                    esNotaCredito(formData.id_tipo_documento) ? 'input-readonly opacity-60' : ''
+                  }`}
+                  value={esNotaCredito(formData.id_tipo_documento) ? 0 : formData.gravadas_locales ?? 0}
+                  disabled={esNotaCredito(formData.id_tipo_documento)}
                   onChange={(e) =>
                     handleValoresChange(
                       parseFloat(e.target.value) || 0,
@@ -714,28 +832,71 @@ export default function ComprasIvaPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Descuentos / Rebajas ($)</label>
+                <label className="form-label font-medium">
+                  {esNotaCredito(formData.id_tipo_documento)
+                    ? 'Monto Base Nota de Crédito ($) *'
+                    : 'Descuentos / Rebajas ($)'}
+                </label>
+                <input
+                  ref={rebajasInputRef}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className={`form-input input-descuento ${
+                    esNotaCredito(formData.id_tipo_documento) ? 'campo-intermitente-atencion' : ''
+                  }`}
+                  value={formData.rebajas_y_devoluciones ?? 0}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    if (esNotaCredito(formData.id_tipo_documento)) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        rebajas_y_devoluciones: val,
+                        iva_rebajas_y_devoluciones: Number((val * 0.13).toFixed(2)),
+                        gravadas_locales: 0,
+                        credito_fiscal: 0,
+                      }));
+                    } else {
+                      handleValoresChange(Number(formData.gravadas_locales) || 0, val);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label font-medium">
+                  IVA Rebajas / Devoluciones ($)
+                  {esNotaCredito(formData.id_tipo_documento) && <span className="text-danger"> *</span>}
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  className="form-input input-descuento"
-                  value={formData.rebajas_y_devoluciones ?? 0}
+                  className={`form-input font-bold text-danger ${
+                    esNotaCredito(formData.id_tipo_documento) ? 'campo-intermitente-atencion' : ''
+                  }`}
+                  value={formData.iva_rebajas_y_devoluciones ?? 0}
                   onChange={(e) =>
-                    handleValoresChange(
-                      Number(formData.gravadas_locales) || 0,
-                      parseFloat(e.target.value) || 0,
-                    )
+                    setFormData((prev) => ({
+                      ...prev,
+                      iva_rebajas_y_devoluciones: parseFloat(e.target.value) || 0,
+                    }))
                   }
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Base Gravada Neta ($)</label>
+                <label className="form-label">
+                  {esNotaCredito(formData.id_tipo_documento) ? 'Base Deducible NC ($)' : 'Base Gravada Neta ($)'}
+                </label>
                 <input
                   type="text"
                   className="form-input input-readonly"
-                  value={`$ ${calcularBaseNeta().toFixed(2)}`}
+                  value={
+                    esNotaCredito(formData.id_tipo_documento)
+                      ? `-$ ${calcularBaseNeta().toFixed(2)}`
+                      : `$ ${calcularBaseNeta().toFixed(2)}`
+                  }
                   readOnly
                   disabled
                 />
@@ -747,8 +908,13 @@ export default function ComprasIvaPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  className="form-input font-bold text-success"
-                  value={formData.credito_fiscal ?? 0}
+                  className={`form-input font-bold ${
+                    esNotaCredito(formData.id_tipo_documento)
+                      ? 'input-readonly opacity-60 text-muted'
+                      : 'text-success'
+                  }`}
+                  value={esNotaCredito(formData.id_tipo_documento) ? 0 : formData.credito_fiscal ?? 0}
+                  disabled={esNotaCredito(formData.id_tipo_documento)}
                   onChange={(e) =>
                     setFormData({ ...formData, credito_fiscal: parseFloat(e.target.value) || 0 })
                   }
@@ -828,20 +994,45 @@ export default function ComprasIvaPage() {
 
             {/* Resumen Final de Compra Simétrico */}
             <div className="resumen-total-symmetrical">
-              <div className="resumen-metric">
-                <span className="resumen-label">Base Gravada Neta:</span>
-                <span className="resumen-val">$ {calcularBaseNeta().toFixed(2)}</span>
-              </div>
-              <div className="resumen-metric">
-                <span className="resumen-label">Crédito Fiscal (IVA):</span>
-                <span className="resumen-val text-success font-bold">
-                  $ {(Number(formData.credito_fiscal) || 0).toFixed(2)}
-                </span>
-              </div>
-              <div className="resumen-metric highlight">
-                <span className="resumen-label">Total Liquidación Compra:</span>
-                <span className="resumen-val font-bold">$ {calcularTotalCompra().toFixed(2)}</span>
-              </div>
+              {esNotaCredito(formData.id_tipo_documento) ? (
+                <>
+                  <div className="resumen-metric">
+                    <span className="resumen-label">Monto Base NC (Resta):</span>
+                    <span className="resumen-val text-danger font-bold">
+                      -$ {calcularBaseNeta().toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="resumen-metric">
+                    <span className="resumen-label">IVA a Deducir de Crédito Fiscal:</span>
+                    <span className="resumen-val text-danger font-bold">
+                      -$ {(Number(formData.iva_rebajas_y_devoluciones) || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="resumen-metric highlight">
+                    <span className="resumen-label">Total a Descontar:</span>
+                    <span className="resumen-val font-bold text-danger">
+                      -$ {calcularTotalCompra().toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="resumen-metric">
+                    <span className="resumen-label">Base Gravada Neta:</span>
+                    <span className="resumen-val">$ {calcularBaseNeta().toFixed(2)}</span>
+                  </div>
+                  <div className="resumen-metric">
+                    <span className="resumen-label">Crédito Fiscal (IVA):</span>
+                    <span className="resumen-val text-success font-bold">
+                      $ {(Number(formData.credito_fiscal) || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="resumen-metric highlight">
+                    <span className="resumen-label">Total Liquidación Compra:</span>
+                    <span className="resumen-val font-bold">$ {calcularTotalCompra().toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="modal-actions">
@@ -984,9 +1175,34 @@ export default function ComprasIvaPage() {
               </span>
             </div>
             <div className="detail-item">
+              <span className="detail-label">IVA Rebajas / Devoluciones:</span>
+              <span className="detail-value text-danger font-bold">
+                {Number(selectedCompra.iva_rebajas_y_devoluciones) > 0
+                  ? `-$ ${(Number(selectedCompra.iva_rebajas_y_devoluciones) || 0).toFixed(2)}`
+                  : '$ 0.00'}
+              </span>
+            </div>
+            <div className="detail-item">
               <span className="detail-label">Crédito Fiscal (IVA):</span>
-              <span className="detail-value text-success font-bold">
-                $ {(Number(selectedCompra.credito_fiscal) || 0).toFixed(2)}
+              <span className={`detail-value font-bold ${esNotaCredito(selectedCompra.id_tipo_documento) ? 'text-danger' : 'text-success'}`}>
+                {esNotaCredito(selectedCompra.id_tipo_documento)
+                  ? `-$ ${(Number(selectedCompra.iva_rebajas_y_devoluciones) || Number(selectedCompra.credito_fiscal) || 0).toFixed(2)}`
+                  : `$ ${(Number(selectedCompra.credito_fiscal) || 0).toFixed(2)}`}
+              </span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Total Compra / Liquidación:</span>
+              <span className={`detail-value font-bold ${esNotaCredito(selectedCompra.id_tipo_documento) ? 'text-danger' : 'text-primary'}`}>
+                {esNotaCredito(selectedCompra.id_tipo_documento)
+                  ? `-$ ${((Number(selectedCompra.rebajas_y_devoluciones) || 0) + (Number(selectedCompra.iva_rebajas_y_devoluciones) || Number(selectedCompra.credito_fiscal) || 0)).toFixed(2)}`
+                  : `$ ${(
+                      Math.max(0, (Number(selectedCompra.gravadas_locales) || 0) - (Number(selectedCompra.rebajas_y_devoluciones) || 0)) +
+                      (Number(selectedCompra.credito_fiscal) || 0) +
+                      (Number(selectedCompra.exentas_locales) || 0) +
+                      (Number(selectedCompra.no_sujetas) || 0) -
+                      (Number(selectedCompra.iva_retenido) || 0) +
+                      (Number(selectedCompra.iva_percibido) || 0)
+                    ).toFixed(2)}`}
               </span>
             </div>
             <div className="detail-item">

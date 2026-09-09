@@ -19,11 +19,12 @@ export async function getLibroCompras(
   const [rows] = await pool.query(
     `SELECT 
       c.llave, DATE_FORMAT(c.fecha, '%d/%m/%Y') as fecha, c.documento,
+      c.id_tipo_documento,
       c.exentas_locales, c.exentas_importaciones, c.exentas_internaciones,
       c.gravadas_locales, c.gravadas_importaciones, c.gravadas_internaciones,
       c.no_sujetas, c.credito_fiscal, c.anticipo_a_cuenta,
       c.iva_retenido, c.iva_percibido, c.retencion_a_terceros,
-      c.compras_a_excluidos, c.rebajas_y_devoluciones,
+      c.compras_a_excluidos, c.rebajas_y_devoluciones, c.iva_rebajas_y_devoluciones,
       COALESCE(p.nom_proveedor, p_reg.nom_proveedor) as nom_proveedor,
       COALESCE(p.registro, p_reg.registro, c.cod_proveedor) as registro_proveedor,
       COALESCE(p.nit_proveedor, p_reg.nit_proveedor) as nit_proveedor
@@ -39,6 +40,7 @@ export async function getLibroCompras(
     llave: string;
     fecha: string;
     documento: string;
+    id_tipo_documento: string;
     exentas_locales: number;
     exentas_importaciones: number;
     exentas_internaciones: number;
@@ -53,6 +55,7 @@ export async function getLibroCompras(
     retencion_a_terceros: number;
     compras_a_excluidos: number;
     rebajas_y_devoluciones: number;
+    iva_rebajas_y_devoluciones: number;
     nom_proveedor: string | null;
     registro_proveedor: string | null;
     nit_proveedor: string | null;
@@ -74,28 +77,66 @@ export async function getLibroCompras(
   let sumRetencionTerceros = 0;
   let sumComprasExcluidos = 0;
   let sumRebajasDevoluciones = 0;
+  let sumIvaRebajasDevoluciones = 0;
+  let sumGrossGravadasLocales = 0;
+  let sumGrossCreditoFiscal = 0;
 
   const filas = purchaseRows.map((r, index) => {
+    const isNotaCredito = r.id_tipo_documento === '09' || (Number(r.rebajas_y_devoluciones) > 0 && Number(r.gravadas_locales) === 0);
     const exentas = Number(r.exentas_locales) || 0;
     const noSujetas = Number(r.no_sujetas) || 0;
-    const rebajas = Number(r.rebajas_y_devoluciones) || 0;
-    // Compra gravada local neta: el valor gravado menos la rebaja/devolución aplicada
-    const gravadas = Math.max(0, Number(((Number(r.gravadas_locales) || 0) - rebajas).toFixed(2)));
-    const credito = Number(r.credito_fiscal) || 0;
     const anticipo = Number(r.anticipo_a_cuenta) || 0;
     const retenido = Number(r.iva_retenido) || 0;
     const percibido = Number(r.iva_percibido) || 0;
 
-    const totalFila = Number((exentas + noSujetas + gravadas + credito + anticipo - retenido + percibido).toFixed(2));
+    let gravadas = 0;
+    let credito = 0;
+    let totalFila = 0;
 
-    totExentas += exentas;
-    totNoSujetas += noSujetas;
-    totGravadas += gravadas;
-    totCreditoFiscal += credito;
-    totAnticipo += anticipo;
-    totRetenido += retenido;
-    totPercibido += percibido;
-    totComprasTotal += totalFila;
+    if (isNotaCredito) {
+      const ncBase = Number(r.rebajas_y_devoluciones) > 0 ? Number(r.rebajas_y_devoluciones) : Number(r.gravadas_locales) || 0;
+      const ncIva = Number(r.iva_rebajas_y_devoluciones) > 0 
+        ? Number(r.iva_rebajas_y_devoluciones) 
+        : (Number(r.credito_fiscal) || Number((ncBase * 0.13).toFixed(2)));
+
+      gravadas = Number((-ncBase).toFixed(2));
+      credito = Number((-ncIva).toFixed(2));
+      totalFila = Number((- (ncBase + ncIva) + exentas + noSujetas + anticipo - retenido + percibido).toFixed(2));
+
+      sumRebajasDevoluciones += ncBase;
+      sumIvaRebajasDevoluciones += ncIva;
+
+      totExentas += exentas;
+      totNoSujetas += noSujetas;
+      totGravadas = Number((totGravadas - ncBase).toFixed(2));
+      totCreditoFiscal = Number((totCreditoFiscal - ncIva).toFixed(2));
+      totAnticipo += anticipo;
+      totRetenido += retenido;
+      totPercibido += percibido;
+      totComprasTotal = Number((totComprasTotal + totalFila).toFixed(2));
+    } else {
+      const rebajas = Number(r.rebajas_y_devoluciones) || 0;
+      const ivaReb = Number(r.iva_rebajas_y_devoluciones) || 0;
+      const grossGrav = Number(r.gravadas_locales) || 0;
+      gravadas = Math.max(0, Number((grossGrav - rebajas).toFixed(2)));
+      credito = Number(r.credito_fiscal) || 0;
+
+      totalFila = Number((exentas + noSujetas + gravadas + credito + anticipo - retenido + percibido).toFixed(2));
+
+      sumGrossGravadasLocales += grossGrav;
+      sumGrossCreditoFiscal += credito;
+      sumRebajasDevoluciones += rebajas;
+      sumIvaRebajasDevoluciones += ivaReb;
+
+      totExentas += exentas;
+      totNoSujetas += noSujetas;
+      totGravadas = Number((totGravadas + gravadas).toFixed(2));
+      totCreditoFiscal = Number((totCreditoFiscal + credito).toFixed(2));
+      totAnticipo += anticipo;
+      totRetenido += retenido;
+      totPercibido += percibido;
+      totComprasTotal = Number((totComprasTotal + totalFila).toFixed(2));
+    }
 
     sumExentasImportaciones += Number(r.exentas_importaciones) || 0;
     sumExentasInternaciones += Number(r.exentas_internaciones) || 0;
@@ -103,7 +144,6 @@ export async function getLibroCompras(
     sumGravadasInternaciones += Number(r.gravadas_internaciones) || 0;
     sumRetencionTerceros += Number(r.retencion_a_terceros) || 0;
     sumComprasExcluidos += Number(r.compras_a_excluidos) || 0;
-    sumRebajasDevoluciones += rebajas;
 
     return {
       corr: index + 1,
@@ -122,12 +162,14 @@ export async function getLibroCompras(
     };
   });
 
+  const totalLocalesNeto = Number((totExentas + sumGrossGravadasLocales - sumRebajasDevoluciones).toFixed(2));
+
   const cuadroResumen = {
     locales: {
       exentas: Number(totExentas.toFixed(2)),
-      gravadas: Number(totGravadas.toFixed(2)),
+      gravadas: Number(sumGrossGravadasLocales.toFixed(2)),
       rebajas: Number(sumRebajasDevoluciones.toFixed(2)),
-      total: Number((totExentas + totGravadas + sumRebajasDevoluciones).toFixed(2)),
+      total: totalLocalesNeto,
     },
     importaciones: {
       exentas: Number(sumExentasImportaciones.toFixed(2)),
@@ -140,6 +182,8 @@ export async function getLibroCompras(
       total: Number((sumExentasInternaciones + sumGravadasInternaciones).toFixed(2)),
     },
     creditoFiscal: Number(totCreditoFiscal.toFixed(2)),
+    creditoFiscalBruto: Number(sumGrossCreditoFiscal.toFixed(2)),
+    ivaRebajas: Number(sumIvaRebajasDevoluciones.toFixed(2)),
     anticipoACuenta: Number(totAnticipo.toFixed(2)),
     ivaPercibido: Number(totPercibido.toFixed(2)),
     ivaRetenido: Number(totRetenido.toFixed(2)),
@@ -538,11 +582,14 @@ export async function getAnexoHacienda(
         c.exentas_locales as compras_exentas,
         c.exentas_internaciones as internaciones_exentas,
         c.exentas_importaciones as importaciones_exentas,
-        (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0)) as compras_gravadas,
+        IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.rebajas_y_devoluciones, 0), c.gravadas_locales), (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0))) as compras_gravadas,
         c.gravadas_internaciones as internaciones_gravadas,
         c.gravadas_importaciones as importaciones_gravadas,
-        c.credito_fiscal,
-        (c.exentas_locales + c.exentas_internaciones + c.exentas_importaciones + (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0)) + c.gravadas_internaciones + c.gravadas_importaciones + c.credito_fiscal) as total_compra
+        IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.iva_rebajas_y_devoluciones, 0), c.credito_fiscal), c.credito_fiscal) as credito_fiscal,
+        (c.exentas_locales + c.exentas_internaciones + c.exentas_importaciones + 
+         IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.rebajas_y_devoluciones, 0), c.gravadas_locales), (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0))) + 
+         c.gravadas_internaciones + c.gravadas_importaciones + 
+         IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.iva_rebajas_y_devoluciones, 0), c.credito_fiscal), c.credito_fiscal)) as total_compra
       FROM compras_iva c
       LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
       LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))

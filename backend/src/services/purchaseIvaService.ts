@@ -147,8 +147,22 @@ export async function createPurchase(
 
   const llave = await obtenerLlave(codEmp);
 
-  const gravadasLocales = Number(data.gravadas_locales) || 0;
-  const creditoFiscal = data.credito_fiscal !== undefined ? Number(data.credito_fiscal) : Number((gravadasLocales * 0.13).toFixed(2));
+  const isNotaCredito = (data.id_tipo_documento || '02') === '09';
+  let gravadasLocales = Number(data.gravadas_locales) || 0;
+  let rebajasDevoluciones = Number(data.rebajas_y_devoluciones) || 0;
+  let creditoFiscal = data.credito_fiscal !== undefined ? Number(data.credito_fiscal) : Number((gravadasLocales * 0.13).toFixed(2));
+  let ivaRebajasDevoluciones = Number(data.iva_rebajas_y_devoluciones) || 0;
+
+  if (isNotaCredito) {
+    const baseNc = rebajasDevoluciones > 0 ? rebajasDevoluciones : gravadasLocales;
+    const ivaNc = ivaRebajasDevoluciones > 0
+      ? ivaRebajasDevoluciones
+      : (creditoFiscal > 0 ? creditoFiscal : Number((baseNc * 0.13).toFixed(2)));
+    rebajasDevoluciones = baseNc;
+    ivaRebajasDevoluciones = ivaNc;
+    gravadasLocales = 0;
+    creditoFiscal = 0;
+  }
 
   const insertCols = [
     'cod_emp', 'llave', 'fecha', 'id_tipo_documento', 'documento', 'cod_proveedor',
@@ -181,8 +195,8 @@ export async function createPurchase(
     Number(data.iva_retenido) || 0,
     Number(data.retencion_a_terceros) || 0,
     Number(data.compras_a_excluidos) || 0,
-    Number(data.rebajas_y_devoluciones) || 0,
-    Number(data.iva_rebajas_y_devoluciones) || 0,
+    rebajasDevoluciones,
+    ivaRebajasDevoluciones,
     data.corr_maquina_registradora || '0',
     Number(data.iva_percibido) || 0,
     data.cod_sucursal || '01',
@@ -219,8 +233,22 @@ export async function updatePurchase(
   const periodoAno = data.periodo_ano || dateObj.getFullYear();
   const periodoMes = data.periodo_mes || (dateObj.getMonth() + 1);
 
-  const gravadasLocales = Number(data.gravadas_locales) || 0;
-  const creditoFiscal = data.credito_fiscal !== undefined ? Number(data.credito_fiscal) : Number((gravadasLocales * 0.13).toFixed(2));
+  const isNotaCredito = (data.id_tipo_documento || '02') === '09';
+  let gravadasLocales = Number(data.gravadas_locales) || 0;
+  let rebajasDevoluciones = Number(data.rebajas_y_devoluciones) || 0;
+  let creditoFiscal = data.credito_fiscal !== undefined ? Number(data.credito_fiscal) : Number((gravadasLocales * 0.13).toFixed(2));
+  let ivaRebajasDevoluciones = Number(data.iva_rebajas_y_devoluciones) || 0;
+
+  if (isNotaCredito) {
+    const baseNc = rebajasDevoluciones > 0 ? rebajasDevoluciones : gravadasLocales;
+    const ivaNc = ivaRebajasDevoluciones > 0
+      ? ivaRebajasDevoluciones
+      : (creditoFiscal > 0 ? creditoFiscal : Number((baseNc * 0.13).toFixed(2)));
+    rebajasDevoluciones = baseNc;
+    ivaRebajasDevoluciones = ivaNc;
+    gravadasLocales = 0;
+    creditoFiscal = 0;
+  }
 
   const updateFields: string[] = [
     'fecha = ?',
@@ -269,8 +297,8 @@ export async function updatePurchase(
     Number(data.iva_retenido) || 0,
     Number(data.retencion_a_terceros) || 0,
     Number(data.compras_a_excluidos) || 0,
-    Number(data.rebajas_y_devoluciones) || 0,
-    Number(data.iva_rebajas_y_devoluciones) || 0,
+    rebajasDevoluciones,
+    ivaRebajasDevoluciones,
     Number(data.iva_percibido) || 0,
     data.cod_sucursal || '01',
     data.cod_punto_venta || 'P',

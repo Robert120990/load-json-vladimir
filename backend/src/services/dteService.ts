@@ -319,8 +319,8 @@ export async function getPeriodoCompras(codEmp: number): Promise<PeriodoCompras 
 export function mapearTipoDocumento(tipoDte: string | undefined, tipo: TipoDte): string {
   const original = tipoDte ?? '';
   const mapa = tipo === 'ventas'
-    ? { '03': '03', '01': '01', '05': '07' }
-    : { '03': '02', '01': '01', '05': '09' };
+    ? { '03': '03', '01': '01', '05': '07', '06': '08' }
+    : { '03': '02', '01': '01', '05': '09', '06': '08' };
   return mapa[original as keyof typeof mapa] ?? original;
 }
 
@@ -357,13 +357,24 @@ function mapearFila(
 
   // Store gross taxable purchases so that: Net Taxable = gravadas_locales - rebajas_y_devoluciones
   const descuento = extraerDescuentoCompras(dte);
-  const gravadasLocales = Number(((resumen.totalGravada ?? 0) + descuento).toFixed(2));
+  let gravadasLocales = Number(((resumen.totalGravada ?? 0) + descuento).toFixed(2));
+  let creditoFiscal = extraerIva(dte);
+  let rebajasDevoluciones = descuento;
+  let ivaRebajasDevoluciones = 0;
+
+  const isNotaCredito = tipoDocumento === '09' || dte.identificacion.tipoDte === '05';
+  if (isNotaCredito) {
+    rebajasDevoluciones = gravadasLocales;
+    ivaRebajasDevoluciones = creditoFiscal;
+    gravadasLocales = 0;
+    creditoFiscal = 0;
+  }
 
   return [
     codEmp, llave, fecha, tipoDocumento, documento, codContraparte,
     exentasLocales, 0, 0, gravadasLocales, 0, 0,
-    resumen.totalNoSuj ?? 0, extraerIva(dte), 0, resumen.ivaRete1 ?? 0,
-    resumen.ivaPerci1 ?? 0, 0, 0, descuento, 0, 0,
+    resumen.totalNoSuj ?? 0, creditoFiscal, 0, resumen.ivaRete1 ?? 0,
+    resumen.ivaPerci1 ?? 0, 0, 0, rebajasDevoluciones, ivaRebajasDevoluciones, 0,
     periodoAno, periodoMes, '01', dte.emisor?.codPuntoVenta ?? '',
     obtenerNumeroControl(dte),
     obtenerSelloRecibido(dte),

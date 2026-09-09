@@ -303,8 +303,14 @@ export default function ReportesLibrosPage() {
     }
   }
 
-  const formatMoney = (val: number | undefined) =>
-    val && val !== 0 ? `$ ${Number(val).toFixed(2)}` : '$ -';
+  const formatMoney = (val: number | undefined) => {
+    if (val === undefined || val === null || Number(val) === 0) return '$ -';
+    const num = Number(val);
+    if (num < 0) {
+      return `-$ ${Math.abs(num).toFixed(2)}`;
+    }
+    return `$ ${num.toFixed(2)}`;
+  };
 
   return (
     <ControlIvaLayout>
@@ -1059,9 +1065,15 @@ export default function ReportesLibrosPage() {
                         <tr>
                           <td className="font-bold">CREDITO FISCAL</td>
                           <td></td>
-                          <td className="text-right font-bold">{formatMoney(reporte.cuadroResumen.creditoFiscal)}</td>
-                          <td></td>
-                          <td className="text-right font-bold">{formatMoney(reporte.cuadroResumen.creditoFiscal)}</td>
+                          <td className="text-right font-bold">
+                            {formatMoney(reporte.cuadroResumen.creditoFiscalBruto ?? reporte.cuadroResumen.creditoFiscal)}
+                          </td>
+                          <td className="text-right font-bold text-danger">
+                            {formatMoney(reporte.cuadroResumen.ivaRebajas)}
+                          </td>
+                          <td className="text-right font-bold">
+                            {formatMoney(reporte.cuadroResumen.creditoFiscal)}
+                          </td>
                         </tr>
                       </tbody>
                     </table>

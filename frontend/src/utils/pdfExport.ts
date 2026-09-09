@@ -94,10 +94,14 @@ export function exportVatBookToPdf(report: VatBookSummary) {
   doc.text(`PERIODO : ${report.periodo.nombreMes} ${report.periodo.anio}`, 14, 32);
   doc.text(`SUCURSAL : ${report.sucursal}`, 140, 32, { align: 'center' });
 
-  const formatMoney = (val: number | undefined) =>
-    val !== undefined && val !== null && Number(val) !== 0
-      ? `$ ${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : '$ -';
+  const formatMoney = (val: number | undefined) => {
+    if (val === undefined || val === null || Number(val) === 0) return '$ -';
+    const num = Number(val);
+    if (num < 0) {
+      return `-$ ${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return `$ ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   if (report.libro === 'compras') {
     const tableColumns = [
@@ -313,7 +317,7 @@ export function exportVatBookToPdf(report: VatBookSummary) {
         ['LOCALES', formatMoney(cr.locales?.exentas), formatMoney(cr.locales?.gravadas), formatMoney(cr.locales?.rebajas), formatMoney(cr.locales?.total)],
         ['IMPORTACIONES', formatMoney(cr.importaciones?.exentas), formatMoney(cr.importaciones?.gravadas), '$ -', formatMoney(cr.importaciones?.total)],
         ['INTERNACIONES', formatMoney(cr.internaciones?.exentas), formatMoney(cr.internaciones?.gravadas), '$ -', formatMoney(cr.internaciones?.total)],
-        ['CREDITO FISCAL', '', formatMoney(cr.creditoFiscal), '', formatMoney(cr.creditoFiscal)],
+        ['CREDITO FISCAL', '', formatMoney(cr.creditoFiscalBruto ?? cr.creditoFiscal), formatMoney(cr.ivaRebajas), formatMoney(cr.creditoFiscal)],
       ],
       startY: crStartY + 4,
       margin: { left: 55, right: 55 },
