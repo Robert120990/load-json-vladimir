@@ -227,6 +227,40 @@ export function extraerDescuentoCompras(dte: DteJson): number {
   return 0;
 }
 
+/**
+ * Extracts Anticipo a Cuenta (2%) for liquidations (Comprobante de Liquidación DTE-08).
+ * Checks tributos for specific codes (C3, 22) or description containing ANTICIPO,
+ * then checks ivaPerci1 / ivaRete1, and falls back to calculating 2% on totalGravada.
+ */
+export function extraerAnticipoCuenta(dte: DteJson): number {
+  const tributos = dte.resumen?.tributos ?? [];
+  const tributoAnticipo = tributos.find((t) => {
+    const cod = String(t.codigo ?? '').trim().toUpperCase();
+    const desc = String(t.descripcion ?? '').trim().toUpperCase();
+    return (
+      cod === 'C3' ||
+      cod === '22' ||
+      desc.includes('ANTICIPO') ||
+      desc.includes('LIQUIDAC')
+    );
+  });
+
+  if (tributoAnticipo && (Number(tributoAnticipo.valor) || 0) > 0) {
+    return Number((Number(tributoAnticipo.valor) || 0).toFixed(2));
+  }
+
+  if ((Number(dte.resumen?.ivaPerci1) || 0) > 0) {
+    return Number((Number(dte.resumen?.ivaPerci1) || 0).toFixed(2));
+  }
+
+  const baseGravada = Number(dte.resumen?.totalGravada) || 0;
+  if (baseGravada > 0) {
+    return Number((baseGravada * 0.02).toFixed(2));
+  }
+
+  return 0;
+}
+
 export async function obtenerLlave(codEmp: number): Promise<string> {
   const [rows] = await pool.query('CALL devolver_correlativo_compra(@out)');
   const conjuntos = rows as Array<Array<{ corr_compra: number }>>;
@@ -321,7 +355,7 @@ export function mapearTipoDocumento(tipoDte: string | undefined, tipo: TipoDte):
   const original = tipoDte ?? '';
   const mapa = tipo === 'ventas'
     ? { '03': '03', '01': '01', '05': '07', '06': '08' }
-    : { '03': '02', '01': '01', '05': '09', '06': '08' };
+    : { '03': '02', '01': '01', '05': '09', '06': '08', '08': '07' };
   return mapa[original as keyof typeof mapa] ?? original;
 }
 
@@ -364,18 +398,30 @@ function mapearFila(
   let ivaRebajasDevoluciones = 0;
 
   const isNotaCredito = tipoDocumento === '09' || dte.identificacion.tipoDte === '05';
+  const isComprobanteLiquidacion = tipoDocumento === '07' || dte.identificacion.tipoDte === '08';
+
+  let anticipoCuenta = 0;
+  let ivaRetenido = resumen.ivaRete1 ?? 0;
+  let ivaPercibido = resumen.ivaPerci1 ?? 0;
+
   if (isNotaCredito) {
     rebajasDevoluciones = gravadasLocales;
     ivaRebajasDevoluciones = creditoFiscal;
     gravadasLocales = 0;
     creditoFiscal = 0;
+  } else if (isComprobanteLiquidacion) {
+    anticipoCuenta = extraerAnticipoCuenta(dte);
+    creditoFiscal = 0;
+    if (ivaPercibido === anticipoCuenta) {
+      ivaPercibido = 0;
+    }
   }
 
   return [
     codEmp, llave, fecha, tipoDocumento, documento, codContraparte,
     exentasLocales, 0, 0, gravadasLocales, 0, 0,
-    resumen.totalNoSuj ?? 0, creditoFiscal, 0, resumen.ivaRete1 ?? 0,
-    resumen.ivaPerci1 ?? 0, 0, 0, rebajasDevoluciones, ivaRebajasDevoluciones, 0,
+    resumen.totalNoSuj ?? 0, creditoFiscal, anticipoCuenta, ivaRetenido,
+    ivaPercibido, 0, 0, rebajasDevoluciones, ivaRebajasDevoluciones, 0,
     periodoAno, periodoMes, '01', dte.emisor?.codPuntoVenta ?? '',
     obtenerNumeroControl(dte),
     obtenerSelloRecibido(dte),

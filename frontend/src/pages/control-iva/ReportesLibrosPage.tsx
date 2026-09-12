@@ -56,6 +56,7 @@ const MONEY_COLUMNS = new Set([
   'internaciones_gravadas',
   'importaciones_gravadas',
   'credito_fiscal',
+  'anticipo_a_cuenta',
   'total_compra',
   'ventas_exentas',
   'ventas_no_sujetas',
@@ -81,6 +82,20 @@ const ANEXO_HEADER_LABELS: Record<string, string> = {
   monto_percepcion: 'MONTO DE LA PERCEPCIÓN 1%',
   dui_agente: 'DUI DEL AGENTE',
   numero_anexo: 'NÚMERO DEL ANEXO',
+  clase_documento: 'CLASE DE DOCUMENTO',
+  numero_control: 'NÚMERO DE CONTROL',
+  sello_recepcion: 'SELLO DE RECEPCIÓN',
+  nit: 'NIT',
+  nombre: 'NOMBRE DEL PROVEEDOR',
+  compras_exentas: 'COMPRAS INTERNAS EXENTAS',
+  internaciones_exentas: 'INTERNACIONES EXENTAS',
+  importaciones_exentas: 'IMPORTACIONES EXENTAS',
+  compras_gravadas: 'COMPRAS INTERNAS GRAVADAS',
+  internaciones_gravadas: 'INTERNACIONES GRAVADAS',
+  importaciones_gravadas: 'IMPORTACIONES GRAVADAS',
+  credito_fiscal: 'CRÉDITO FISCAL',
+  anticipo_a_cuenta: 'ANTICIPO A CUENTA',
+  total_compra: 'TOTAL DE COMPRAS',
 };
 
 function formatAnexoCell(key: string, val: any): React.ReactNode {

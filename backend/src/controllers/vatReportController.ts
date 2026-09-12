@@ -75,11 +75,12 @@ export const getPlantillaOficialAnexo = asyncHandler(async (req: Request, res: R
         'INTERNACIONES GRAVADAS',
         'IMPORTACIONES GRAVADAS',
         'CREDITO FISCAL',
+        'ANTICIPO A CUENTA',
         'TOTAL DE COMPRAS',
       ],
       ejemplo: [
         '04/05/2026', '4 - DTE', 'CREDITO FISCAL', '73E8C98E-D4A7-144A-877E-094C3E1A47D5', 'DTE-03-M001P001-000000000001', '2026DTE03M001P001RECEPCION001', '77122-8', 'ENMANUEL, S.A. DE C.V.',
-        0, 0, 0, 25.50, 0, 0, 3.32, 28.82,
+        0, 0, 0, 25.50, 0, 0, 3.32, 0, 28.82,
       ],
     });
     return;

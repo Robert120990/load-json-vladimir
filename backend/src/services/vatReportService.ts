@@ -586,10 +586,12 @@ export async function getAnexoHacienda(
         c.gravadas_internaciones as internaciones_gravadas,
         c.gravadas_importaciones as importaciones_gravadas,
         IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.iva_rebajas_y_devoluciones, 0), c.credito_fiscal), c.credito_fiscal) as credito_fiscal,
+        COALESCE(c.anticipo_a_cuenta, 0) as anticipo_a_cuenta,
         (c.exentas_locales + c.exentas_internaciones + c.exentas_importaciones + 
          IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.rebajas_y_devoluciones, 0), c.gravadas_locales), (c.gravadas_locales - COALESCE(c.rebajas_y_devoluciones, 0))) + 
          c.gravadas_internaciones + c.gravadas_importaciones + 
-         IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.iva_rebajas_y_devoluciones, 0), c.credito_fiscal), c.credito_fiscal)) as total_compra
+         IF(c.id_tipo_documento = '09', COALESCE(NULLIF(c.iva_rebajas_y_devoluciones, 0), c.credito_fiscal), c.credito_fiscal) +
+         COALESCE(c.anticipo_a_cuenta, 0)) as total_compra
       FROM compras_iva c
       LEFT JOIN proveedores p ON c.cod_proveedor = p.cod_proveedor
       LEFT JOIN proveedores p_reg ON (c.cod_proveedor = p_reg.registro OR REPLACE(c.cod_proveedor, '-', '') = REPLACE(p_reg.registro, '-', ''))
