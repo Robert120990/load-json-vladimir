@@ -462,9 +462,9 @@ export default function PartidasContablesPage() {
 
   return (
     <ControlIvaLayout>
-      <div className="partidas-page">
+      <div className={`partidas-page ${isPreviewOpen ? 'no-print' : ''}`}>
       {/* Top Header & Actions */}
-      <div className="page-header">
+      <div className="page-header no-print">
         <div>
           <h1 className="page-title">Partidas Contables</h1>
           <p className="page-subtitle">
@@ -1161,123 +1161,110 @@ export default function PartidasContablesPage() {
                 <p className="mt-2 text-sm text-muted">Cargando comprobante...</p>
               </div>
             ) : (
-              <div className="voucher-sheet">
-                {/* Voucher Header */}
-                <div className="voucher-header">
-                  <h2 className="voucher-empresa-nom">
+              <div className="accounting-report-document voucher-sheet">
+                {/* Official Report Header */}
+                <div className="report-header">
+                  <h2 className="report-company-name">
                     {empresa?.nom_emp || `EMPRESA #${empresa?.cod_emp}`}
                   </h2>
-                  <div className="voucher-empresa-nit">NIT: {empresa?.nit || '—'}</div>
-                  <h3 className="voucher-tipo-title">
+                  <div className="report-meta-info">
+                    <span>NIT: {empresa?.nit || '—'}</span>
+                    <span>NRC: {empresa?.reg_fiscal || '—'}</span>
+                    <span>ESTADO: {previewPartida.anulada_part === 1 ? 'ANULADA' : 'ACTIVA'}</span>
+                  </div>
+                  <h3 className="report-book-title font-bold">
                     COMPROBANTE DE DIARIO ({previewPartida.nom_tp_partida || 'PARTIDA'})
                   </h3>
-                </div>
-
-                {/* Voucher Meta Grid */}
-                <div className="voucher-meta-box">
-                  <div className="meta-col">
-                    <span className="meta-lbl">Número Correlativo:</span>
-                    <span className="meta-val font-bold">#{previewPartida.num_correl}</span>
-                  </div>
-                  <div className="meta-col">
-                    <span className="meta-lbl">Código Único:</span>
-                    <span className="meta-val font-mono">{previewPartida.cod_part}</span>
-                  </div>
-                  <div className="meta-col">
-                    <span className="meta-lbl">Fecha de Registro:</span>
-                    <span className="meta-val">
-                      {formatFechaDDMMYYYY(previewPartida.fec_partida)}
-                    </span>
-                  </div>
-                  <div className="meta-col">
-                    <span className="meta-lbl">Estado:</span>
-                    <span className="meta-val">
-                      {previewPartida.anulada_part === 1 ? 'ANULADA' : 'ACTIVA'}
-                    </span>
+                  <div className="report-period-row">
+                    <span><strong>N° Correlativo:</strong> #{previewPartida.num_correl}</span>
+                    <span><strong>Código:</strong> {previewPartida.cod_part}</span>
+                    <span><strong>Fecha:</strong> {formatFechaDDMMYYYY(previewPartida.fec_partida)}</span>
                   </div>
                 </div>
 
-                {/* Concept */}
+                {/* Concept Box */}
                 <div className="voucher-concept-box">
                   <strong>Concepto:</strong> {previewPartida.concepto_part}
                 </div>
 
-                {/* Lines Table */}
-                <table className="voucher-lines-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '130px' }}>CÓDIGO</th>
-                      <th>CUENTA Y DETALLE</th>
-                      <th style={{ width: '120px', textAlign: 'right' }}>DEBE ($)</th>
-                      <th style={{ width: '120px', textAlign: 'right' }}>HABER ($)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewPartida.detalles?.map((d, idx) => (
-                      <tr key={idx}>
-                        <td className="font-mono font-bold">{d.cod_cta}</td>
-                        <td>
-                          <div className="font-bold text-slate-800">{d.nom_cta}</div>
-                          {d.concepto && d.concepto !== previewPartida.concepto_part && (
-                            <div className="text-xs text-muted">{d.concepto}</div>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }} className="font-mono">
-                          {Number(d.cargo_part) > 0
-                            ? `$${Number(d.cargo_part).toFixed(2)}`
-                            : ''}
-                        </td>
-                        <td style={{ textAlign: 'right' }} className="font-mono">
-                          {Number(d.abono_part) > 0
-                            ? `$${Number(d.abono_part).toFixed(2)}`
-                            : ''}
-                        </td>
+                {/* Lines Official Table */}
+                <div className="report-table-wrapper">
+                  <table className="official-table voucher-lines-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '130px' }}>CÓDIGO</th>
+                        <th>CUENTA Y DETALLE</th>
+                        <th style={{ width: '130px', textAlign: 'right' }}>DEBE ($)</th>
+                        <th style={{ width: '130px', textAlign: 'right' }}>HABER ($)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <th colSpan={2} style={{ textAlign: 'right' }}>
-                        TOTALES ($):
-                      </th>
-                      <th style={{ textAlign: 'right' }} className="font-mono font-bold">
-                        ${Number(previewPartida.cargo_part).toFixed(2)}
-                      </th>
-                      <th style={{ textAlign: 'right' }} className="font-mono font-bold">
-                        ${Number(previewPartida.abono_part).toFixed(2)}
-                      </th>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </thead>
+                    <tbody>
+                      {previewPartida.detalles?.map((d, idx) => (
+                        <tr key={idx}>
+                          <td className="font-mono font-bold">{d.cod_cta}</td>
+                          <td>
+                            <div className="font-bold text-slate-800">{d.nom_cta}</div>
+                            {d.concepto && d.concepto !== previewPartida.concepto_part && (
+                              <div className="text-xs text-muted">{d.concepto}</div>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'right' }} className="font-mono font-bold">
+                            {Number(d.cargo_part) > 0
+                              ? `$${Number(d.cargo_part).toFixed(2)}`
+                              : ''}
+                          </td>
+                          <td style={{ textAlign: 'right' }} className="font-mono font-bold">
+                            {Number(d.abono_part) > 0
+                              ? `$${Number(d.abono_part).toFixed(2)}`
+                              : ''}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="tr-totales font-bold">
+                        <th colSpan={2} style={{ textAlign: 'right' }}>
+                          SUMAS IGUALES ($):
+                        </th>
+                        <th style={{ textAlign: 'right' }} className="font-mono font-bold">
+                          ${Number(previewPartida.cargo_part).toFixed(2)}
+                        </th>
+                        <th style={{ textAlign: 'right' }} className="font-mono font-bold">
+                          ${Number(previewPartida.abono_part).toFixed(2)}
+                        </th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
 
-                {/* Signatures Row */}
-                <div className="voucher-signatures-row">
-                  <div className="signature-box">
+                {/* Official Signatures Row */}
+                <div className="report-signatures-box">
+                  <div className="signature-col">
                     <div className="signature-line" />
-                    <div className="signature-name">
-                      {firmas.find((f) => f.id_firma === 1)?.nom_firma || 'Firma'}
+                    <div className="signature-name font-bold">
+                      {firmas.find((f) => f.id_firma === 1)?.nom_firma || '___________________________'}
                     </div>
-                    <div className="signature-role">
+                    <div className="signature-label">
                       {firmas.find((f) => f.id_firma === 1)?.puesto || 'Elaboró'}
                     </div>
                   </div>
 
-                  <div className="signature-box">
+                  <div className="signature-col">
                     <div className="signature-line" />
-                    <div className="signature-name">
-                      {firmas.find((f) => f.id_firma === 2)?.nom_firma || 'Firma'}
+                    <div className="signature-name font-bold">
+                      {firmas.find((f) => f.id_firma === 2)?.nom_firma || '___________________________'}
                     </div>
-                    <div className="signature-role">
+                    <div className="signature-label">
                       {firmas.find((f) => f.id_firma === 2)?.puesto || 'Revisó'}
                     </div>
                   </div>
 
-                  <div className="signature-box">
+                  <div className="signature-col">
                     <div className="signature-line" />
-                    <div className="signature-name">
-                      {firmas.find((f) => f.id_firma === 3)?.nom_firma || 'Firma'}
+                    <div className="signature-name font-bold">
+                      {firmas.find((f) => f.id_firma === 3)?.nom_firma || '___________________________'}
                     </div>
-                    <div className="signature-role">
+                    <div className="signature-label">
                       {firmas.find((f) => f.id_firma === 3)?.puesto || 'Autorizó / Contador'}
                     </div>
                   </div>
