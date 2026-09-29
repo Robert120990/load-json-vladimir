@@ -4921,18 +4921,24 @@ button:disabled {
   }
 
   /* Impresión limpia de Comprobante de Partida Contable en Modal */
+  .modal-backdrop:has(.printable-voucher),
   body:has(.printable-voucher) .modal-backdrop,
-  .modal-backdrop:has(.printable-voucher) {
+  .printable-voucher-modal,
+  .printable-voucher-modal.modal-backdrop {
     position: static !important;
     background: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
     display: block !important;
     overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    inset: auto !important;
   }
 
   .modal-backdrop .modal-container:has(.printable-voucher),
-  body:has(.printable-voucher) .modal-container {
+  body:has(.printable-voucher) .modal-container,
+  .printable-voucher-modal .modal-container {
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
@@ -4945,15 +4951,18 @@ button:disabled {
     overflow: visible !important;
     animation: none !important;
     background: transparent !important;
+    transform: none !important;
   }
 
   body:has(.printable-voucher) .modal-header,
-  .modal-container:has(.printable-voucher) .modal-header {
+  .modal-container:has(.printable-voucher) .modal-header,
+  .printable-voucher-modal .modal-header {
     display: none !important;
   }
 
   body:has(.printable-voucher) .modal-body,
-  .modal-container:has(.printable-voucher) .modal-body {
+  .modal-container:has(.printable-voucher) .modal-body,
+  .printable-voucher-modal .modal-body {
     padding: 0 !important;
     margin: 0 !important;
     max-height: none !important;
@@ -4967,6 +4976,7 @@ button:disabled {
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
+    display: block !important;
   }
 
   .printable-voucher .voucher-sheet {

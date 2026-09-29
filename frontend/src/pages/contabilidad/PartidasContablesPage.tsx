@@ -1134,6 +1134,7 @@ export default function PartidasContablesPage() {
           </form>
         </Modal>
       )}
+      </div>
 
       {/* MODAL: View / Print Preview */}
       {isPreviewOpen && (
@@ -1142,6 +1143,7 @@ export default function PartidasContablesPage() {
           onClose={() => setIsPreviewOpen(false)}
           title="Comprobante de Partida Contable"
           maxWidth="4xl"
+          className="printable-voucher-modal"
         >
           <div className="printable-voucher">
             <div className="flex justify-end mb-4 no-print">
@@ -1274,7 +1276,6 @@ export default function PartidasContablesPage() {
           </div>
         </Modal>
       )}
-        </div>
       </ControlIvaLayout>
     );
 }

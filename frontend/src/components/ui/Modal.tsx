@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
+  className?: string;
 }
 
 export default function Modal({
@@ -15,6 +16,7 @@ export default function Modal({
   title,
   children,
   maxWidth = 'lg',
+  className = '',
 }: ModalProps) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -38,7 +40,7 @@ export default function Modal({
   }[maxWidth];
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className={`modal-backdrop ${className}`.trim()} onClick={onClose}>
       <div
         className={`modal-container ${maxWidthClass}`}
         onClick={(e) => e.stopPropagation()}
