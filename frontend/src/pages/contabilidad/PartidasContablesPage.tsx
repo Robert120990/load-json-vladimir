@@ -743,9 +743,22 @@ export default function PartidasContablesPage() {
       {isEditorOpen && (
         <Modal
           isOpen={true}
-          onClose={() => setIsEditorOpen(false)}
+          onClose={() => {
+            if (
+              formPartida.concepto_part.trim() ||
+              formPartida.detalles.length > 0
+            ) {
+              if (window.confirm('¿Desea salir? Los cambios no guardados en la partida se perderán.')) {
+                setIsEditorOpen(false);
+              }
+            } else {
+              setIsEditorOpen(false);
+            }
+          }}
           title={editingCodPart ? `Editar Partida Contable: ${editingCodPart}` : 'Nueva Partida Contable'}
           maxWidth="4xl"
+          closeOnClickOutside={false}
+          closeOnEscape={false}
         >
           <form onSubmit={handleGuardarPartida} onKeyDown={handleEnterNavigation} className="form-symmetrical">
             {/* Header Inputs Grid */}
@@ -1108,7 +1121,15 @@ export default function PartidasContablesPage() {
               <button
                 type="button"
                 className="btn-secundario"
-                onClick={() => setIsEditorOpen(false)}
+                onClick={() => {
+                  if (formPartida.concepto_part.trim() || formPartida.detalles.length > 0) {
+                    if (window.confirm('¿Desea salir? Los cambios no guardados en la partida se perderán.')) {
+                      setIsEditorOpen(false);
+                    }
+                  } else {
+                    setIsEditorOpen(false);
+                  }
+                }}
                 disabled={saving}
               >
                 Cancelar

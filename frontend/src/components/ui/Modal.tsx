@@ -8,6 +8,8 @@ interface ModalProps {
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
   className?: string;
+  closeOnClickOutside?: boolean;
+  closeOnEscape?: boolean;
 }
 
 export default function Modal({
@@ -17,16 +19,18 @@ export default function Modal({
   children,
   maxWidth = 'lg',
   className = '',
+  closeOnClickOutside = true,
+  closeOnEscape = true,
 }: ModalProps) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && closeOnEscape) {
         onClose();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 
@@ -40,7 +44,14 @@ export default function Modal({
   }[maxWidth];
 
   return (
-    <div className={`modal-backdrop ${className}`.trim()} onClick={onClose}>
+    <div
+      className={`modal-backdrop ${className}`.trim()}
+      onClick={() => {
+        if (closeOnClickOutside) {
+          onClose();
+        }
+      }}
+    >
       <div
         className={`modal-container ${maxWidthClass}`}
         onClick={(e) => e.stopPropagation()}

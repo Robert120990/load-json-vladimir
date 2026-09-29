@@ -512,9 +512,24 @@ export default function VentasIvaPage() {
       {(modalMode === 'create' || modalMode === 'edit') && (
         <Modal
           isOpen={true}
-          onClose={() => setModalMode(null)}
+          onClose={() => {
+            const hasData =
+              Boolean(formData.documento?.trim()) ||
+              Boolean(formData.cod_cliente) ||
+              Number(formData.gravadas_locales || 0) > 0 ||
+              Number(formData.debito_fiscal || 0) > 0;
+            if (hasData) {
+              if (window.confirm('¿Desea salir? Los datos no guardados de la venta se perderán.')) {
+                setModalMode(null);
+              }
+            } else {
+              setModalMode(null);
+            }
+          }}
           title={modalMode === 'create' ? 'Registrar Venta IVA' : `Editar Venta: ${selectedVenta?.documento}`}
           maxWidth="2xl"
+          closeOnClickOutside={false}
+          closeOnEscape={false}
         >
           <form onSubmit={handleSubmit} onKeyDown={handleEnterNavigation} className="form-symmetrical">
             {/* Sección 1: Datos del Documento */}
@@ -790,7 +805,20 @@ export default function VentasIvaPage() {
               <button
                 type="button"
                 className="btn-secundario"
-                onClick={() => setModalMode(null)}
+                onClick={() => {
+                  const hasData =
+                    Boolean(formData.documento?.trim()) ||
+                    Boolean(formData.cod_cliente) ||
+                    Number(formData.gravadas_locales || 0) > 0 ||
+                    Number(formData.debito_fiscal || 0) > 0;
+                  if (hasData) {
+                    if (window.confirm('¿Desea salir? Los datos no guardados de la venta se perderán.')) {
+                      setModalMode(null);
+                    }
+                  } else {
+                    setModalMode(null);
+                  }
+                }}
                 disabled={submitting}
               >
                 Cancelar
