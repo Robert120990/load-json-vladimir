@@ -11,6 +11,7 @@ import {
   Filter,
   Layers,
   Plus,
+  Printer,
   RefreshCw,
   Search,
   Trash2,
@@ -27,19 +28,27 @@ import {
   obtenerTiposCuenta,
   verificarImportacionCatalogo,
 } from '../../api/accounting';
+import { obtenerEmpresa } from '../../api/auth';
 import ControlIvaLayout from '../../components/layout/ControlIvaLayout';
 import Modal from '../../components/ui/Modal';
+import { Empresa } from '../../types';
 import {
   AccountImportRow,
   CuentaContable,
   ImportVerificationResult,
   TipoCuenta,
 } from '../../types/accounting';
+import {
+  exportCatalogoToExcel,
+  exportCatalogoToPdf,
+  printCatalogoPdf,
+} from '../../utils/catalogoExport';
 import { handleEnterNavigation } from '../../utils/formNavigation';
 import { matchesSearchTokens } from '../../utils/searchUtils';
 
 export default function CatalogoCuentasPage() {
   const currentYearStr = String(new Date().getFullYear());
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [ejercicios, setEjercicios] = useState<string[]>([]);
   const [selectedEjercicio, setSelectedEjercicio] = useState<string>(currentYearStr);
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
@@ -105,11 +114,13 @@ export default function CatalogoCuentasPage() {
 
   async function cargarEjerciciosYTipos() {
     try {
-      const [years, tipos] = await Promise.all([
+      const [years, tipos, emp] = await Promise.all([
         obtenerEjerciciosCatalogo(),
         obtenerTiposCuenta(),
+        obtenerEmpresa().catch(() => null),
       ]);
       setTiposCuenta(tipos);
+      if (emp) setEmpresa(emp);
       if (years.length > 0) {
         setEjercicios(years);
         if (!years.includes(selectedEjercicio)) {
@@ -489,6 +500,39 @@ export default function CatalogoCuentasPage() {
 
           <button
             type="button"
+            className="btn-export btn-pdf"
+            onClick={() => exportCatalogoToPdf(filteredCuentas, selectedEjercicio, empresa)}
+            disabled={filteredCuentas.length === 0}
+            title="Descargar catálogo contable en archivo PDF"
+          >
+            <Download size={16} />
+            <span>Descargar PDF</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-export btn-excel"
+            onClick={() => exportCatalogoToExcel(filteredCuentas, selectedEjercicio, empresa)}
+            disabled={filteredCuentas.length === 0}
+            title="Exportar catálogo a archivo Excel (.xlsx)"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Exportar Excel</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-export btn-print"
+            onClick={() => printCatalogoPdf(filteredCuentas, selectedEjercicio, empresa)}
+            disabled={filteredCuentas.length === 0}
+            title="Imprimir catálogo contable"
+          >
+            <Printer size={16} />
+            <span>Imprimir</span>
+          </button>
+
+          <button
+            type="button"
             className="btn-primario"
             onClick={abrirModalNueva}
           >
@@ -596,16 +640,38 @@ export default function CatalogoCuentasPage() {
               </select>
             </div>
 
-            <button
-              type="button"
-              className="btn-secundario btn-sm"
-              onClick={() => cargarCuentas(selectedEjercicio)}
-              title="Recargar catálogo"
-            >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn-export btn-excel"
+            onClick={() => exportCatalogoToExcel(filteredCuentas, selectedEjercicio, empresa)}
+            disabled={filteredCuentas.length === 0}
+            title="Exportar catálogo a archivo Excel (.xlsx)"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Exportar Excel</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-export btn-print"
+            onClick={() => printCatalogoPdf(filteredCuentas, selectedEjercicio, empresa)}
+            disabled={filteredCuentas.length === 0}
+            title="Imprimir catálogo contable en PDF"
+          >
+            <Printer size={16} />
+            <span>Imprimir</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-secundario btn-sm"
+            onClick={() => cargarCuentas(selectedEjercicio)}
+            title="Recargar catálogo"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
+      </div>
 
         <div className="tabla-contenedor">
           <table className="tabla-registros">

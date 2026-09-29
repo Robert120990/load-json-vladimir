@@ -169,7 +169,7 @@ export async function mayorizarCuentas(req: Request, res: Response) {
     const insertPlaceholders: string[] = [];
 
     for (const [, a] of accountMap) {
-      insertPlaceholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      insertPlaceholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       insertValues.push(
         a.cod_cta,
         a.dep_cta,
@@ -210,9 +210,10 @@ export async function mayorizarCuentas(req: Request, res: Response) {
 
     // Insert in batches of 100 to avoid packet limits
     const batchSize = 100;
+    const valuesPerRow = 47;
     for (let i = 0; i < insertPlaceholders.length; i += batchSize) {
       const chunkPlaceholders = insertPlaceholders.slice(i, i + batchSize);
-      const chunkValues = insertValues.slice(i * 46, (i + chunkPlaceholders.length) * 46);
+      const chunkValues = insertValues.slice(i * valuesPerRow, (i + chunkPlaceholders.length) * valuesPerRow);
 
       const sql = `
         INSERT INTO cuentas_saldos (
