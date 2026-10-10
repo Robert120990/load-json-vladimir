@@ -355,7 +355,7 @@ export function mapearTipoDocumento(tipoDte: string | undefined, tipo: TipoDte):
   const original = tipoDte ?? '';
   const mapa = tipo === 'ventas'
     ? { '03': '03', '01': '01', '05': '07', '06': '08' }
-    : { '03': '02', '01': '01', '05': '09', '06': '08', '08': '07' };
+    : { '03': '02', '01': '01', '05': '09', '06': '08', '08': '07', '09': '07' };
   return mapa[original as keyof typeof mapa] ?? original;
 }
 
@@ -398,7 +398,10 @@ function mapearFila(
   let ivaRebajasDevoluciones = 0;
 
   const isNotaCredito = tipoDocumento === '09' || dte.identificacion.tipoDte === '05';
-  const isComprobanteLiquidacion = tipoDocumento === '07' || dte.identificacion.tipoDte === '08';
+  const isComprobanteLiquidacion =
+    tipoDocumento === '07' ||
+    dte.identificacion.tipoDte === '08' ||
+    dte.identificacion.tipoDte === '09';
 
   let anticipoCuenta = 0;
   let ivaRetenido = resumen.ivaRete1 ?? 0;
