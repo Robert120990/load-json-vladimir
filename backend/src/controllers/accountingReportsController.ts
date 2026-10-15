@@ -278,6 +278,28 @@ const MONTH_NAMES = [
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
+function resolveDateRange(paramDesde?: string, paramHasta?: string, fallbackYear?: number): { fDesde: string; fHasta: string } {
+  const ano = fallbackYear || new Date().getFullYear();
+  const fDesde = (paramDesde && paramDesde.trim()) ? paramDesde.trim() : `${ano}-01-01`;
+  let fHasta = (paramHasta && paramHasta.trim()) ? paramHasta.trim() : '';
+
+  if (!fHasta) {
+    if (paramDesde && paramDesde.trim()) {
+      const parts = paramDesde.trim().split('-').map(Number);
+      if (parts.length >= 2 && parts[0] && parts[1]) {
+        const lastDay = new Date(parts[0], parts[1], 0).getDate();
+        fHasta = `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      } else {
+        fHasta = `${ano}-12-31`;
+      }
+    } else {
+      fHasta = `${ano}-12-31`;
+    }
+  }
+
+  return { fDesde, fHasta };
+}
+
 /**
  * Generates data for any of the 12 official accounting reports.
  */
@@ -353,8 +375,7 @@ export async function generarReporteContable(req: Request, res: Response) {
       // -------------------------------------------------------------
       case 'auxiliar_operaciones': {
         titulo = 'AUXILIAR DE OPERACIONES';
-        const fDesde = paramFechaDesde || `${ano}-01-01`;
-        const fHasta = paramFechaHasta || `${ano}-12-31`;
+        const { fDesde, fHasta } = resolveDateRange(paramFechaDesde, paramFechaHasta, ano);
         periodoTexto = `DEL ${formatDateDMA(fDesde)} AL ${formatDateDMA(fHasta)}`;
 
         const ctaDesde = (paramCuentaDesde || '').trim();
@@ -886,8 +907,7 @@ export async function generarReporteContable(req: Request, res: Response) {
       // -------------------------------------------------------------
       case 'diario': {
         titulo = 'LIBRO DIARIO';
-        const fDesde = paramFechaDesde || `${ano}-01-01`;
-        const fHasta = paramFechaHasta || `${ano}-12-31`;
+        const { fDesde, fHasta } = resolveDateRange(paramFechaDesde, paramFechaHasta, ano);
         periodoTexto = `DEL ${formatDateDMA(fDesde)} AL ${formatDateDMA(fHasta)}`;
 
         let queryPart = `
@@ -897,16 +917,16 @@ export async function generarReporteContable(req: Request, res: Response) {
             DATE_FORMAT(c.fec_partida, '%Y-%m-%d') as fec_iso,
             c.concepto_part,
             tp.cod_tp_partida,
-            tp.nom_tp_partida,
+            COALESCE(tp.nom_tp_partida, '') as nom_tp_partida,
             d.id_cta,
             d.cod_cta,
-            a.nom_cta,
+            COALESCE(NULLIF(TRIM(a.nom_cta), ''), d.nom_cta, '') as nom_cta,
             d.concepto,
             d.cargo_part,
             d.abono_part
           FROM cabecera_partida c
           INNER JOIN detalle_partida d ON c.cod_part = d.cod_part
-          LEFT JOIN tipo_partida tp ON c.cod_tp_part = tp.cod_tp_partida AND tp.cod_emp = c.cod_emp
+          LEFT JOIN tipo_partida tp ON c.cod_tp_part = tp.cod_tp_partida AND (tp.cod_emp = c.cod_emp OR tp.cod_emp IS NULL)
           LEFT JOIN cat_cuentas a ON d.cod_cta = a.cod_cta AND a.cod_emp = c.cod_emp AND a.ejercicio = YEAR(c.fec_partida)
           WHERE c.cod_emp = ?
             AND c.fec_partida BETWEEN ? AND ?
@@ -914,22 +934,22 @@ export async function generarReporteContable(req: Request, res: Response) {
         `;
         const qParams: any[] = [codEmp, fDesde, fHasta];
 
-        if (paramTipoPart) {
+        if (paramTipoPart && paramTipoPart !== 'TODAS') {
           queryPart += ` AND c.cod_tp_part = ?`;
           qParams.push(paramTipoPart);
         }
 
-        queryPart += ` ORDER BY c.fec_partida ASC, c.num_correl ASC, d.id_cta ASC`;
+        queryPart += ` ORDER BY c.fec_partida ASC, c.num_correl ASC, c.cod_part ASC, d.id_cta ASC`;
 
         const [rows]: any = await pool.query(queryPart, qParams);
 
         // Group by journal entry
-        const partidasMap = new Map<number, any>();
+        const partidasMap = new Map<string, any>();
         let grandTotalDebe = 0;
         let grandTotalHaber = 0;
 
         for (const r of rows) {
-          const codPart = Number(r.cod_part);
+          const codPart = String(r.cod_part);
           if (!partidasMap.has(codPart)) {
             partidasMap.set(codPart, {
               cod_part: codPart,
@@ -960,7 +980,12 @@ export async function generarReporteContable(req: Request, res: Response) {
           });
         }
 
-        const partidas = Array.from(partidasMap.values());
+        const partidas = Array.from(partidasMap.values()).map((p) => ({
+          ...p,
+          totalDebe: Math.round(p.totalDebe * 100) / 100,
+          totalHaber: Math.round(p.totalHaber * 100) / 100,
+        }));
+
         data = {
           partidas,
           grandTotalDebe: Math.round(grandTotalDebe * 100) / 100,

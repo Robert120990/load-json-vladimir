@@ -4,3 +4,5 @@ dist/
 .env.local
 *.log
 backend/migrations/reportes/
+pnpm-lock.yaml
+pnpm-workspace.yaml

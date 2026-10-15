@@ -305,6 +305,21 @@ export default function ReportesContablesPage() {
 
   // Handle Report Generation (Preview)
   async function handleGenerateReport() {
+    if (activeReport.params.requiresRangoFechas) {
+      if (!paramFecDesde) {
+        toast.error('Por favor ingresa una fecha de inicio válida.');
+        return;
+      }
+      if (!paramFecHasta) {
+        toast.error('La fecha fin no es válida. Revisa los días del mes (ej. Junio tiene 30 días, el 31/06 no existe).');
+        return;
+      }
+      if (paramFecDesde > paramFecHasta) {
+        toast.error('La fecha de inicio no puede ser posterior a la fecha fin.');
+        return;
+      }
+    }
+
     try {
       setCargandoReporte(true);
       const res = await obtenerDatosReporteContable({
@@ -561,11 +576,28 @@ export default function ReportesContablesPage() {
                         type="date"
                         className="form-input"
                         value={paramFecDesde}
-                        onChange={(e) => setParamFecDesde(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setParamFecDesde(val);
+                          if (val) {
+                            const [y, m] = val.split('-').map(Number);
+                            if (y && m) {
+                              const lastDay = new Date(y, m, 0).getDate();
+                              setParamFecHasta(`${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+                            }
+                          }
+                        }}
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Al (Fecha Fin) *</label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="form-label mb-0">Al (Fecha Fin) *</label>
+                        {paramFecDesde && (
+                          <span className="text-[11px] text-blue-600 font-semibold">
+                            (Fin de mes: {new Date(Number(paramFecDesde.split('-')[0]), Number(paramFecDesde.split('-')[1]), 0).getDate()} de {new Date(paramFecDesde + 'T12:00:00').toLocaleDateString('es-ES', { month: 'short' })})
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="date"
                         className="form-input"
@@ -1207,8 +1239,8 @@ export default function ReportesContablesPage() {
                                   <td className="font-mono">{l.cod_cta}</td>
                                   <td>{l.nom_cta}</td>
                                   <td className="text-xs text-slate-600">{l.concepto}</td>
-                                  <td className="text-right font-mono">{formatCurrency(l.debe)}</td>
-                                  <td className="text-right font-mono">{formatCurrency(l.haber)}</td>
+                                  <td className="text-right font-mono">{l.debe > 0 ? formatCurrency(l.debe) : ''}</td>
+                                  <td className="text-right font-mono">{l.haber > 0 ? formatCurrency(l.haber) : ''}</td>
                                 </tr>
                               ))}
                               <tr style={{ background: '#f8fafc', fontWeight: 'bold' }}>
@@ -1225,6 +1257,10 @@ export default function ReportesContablesPage() {
                           </tr>
                         </tbody>
                       </table>
+                      <div className="flex justify-between items-center text-xs text-slate-600 font-bold p-3 border-t border-slate-200 bg-slate-50">
+                        <span>No. de Partidas Impresas : {reporteGenerado.data.totalPartidas ?? (reporteGenerado.data.partidas || []).length}</span>
+                        <span>FIN DEL REPORTE.</span>
+                      </div>
                     </div>
                   )}
 

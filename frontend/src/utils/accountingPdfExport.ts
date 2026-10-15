@@ -583,8 +583,8 @@ export function exportAccountingReportToPdf(report: ReporteContableResponse) {
             l.cod_cta,
             l.nom_cta,
             l.concepto,
-            formatCurrency(l.debe),
-            formatCurrency(l.haber),
+            l.debe > 0 ? formatCurrency(l.debe) : '',
+            l.haber > 0 ? formatCurrency(l.haber) : '',
           ]);
         });
 
@@ -618,6 +618,20 @@ export function exportAccountingReportToPdf(report: ReporteContableResponse) {
           4: { halign: 'right', cellWidth: 28 },
         },
       });
+
+      let finalY = (doc as any).lastAutoTable?.finalY || startY + 20;
+      if (finalY + 16 > doc.internal.pageSize.getHeight() - 25) {
+        doc.addPage();
+        finalY = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`No. de Partidas Impresas :   ${report.data.totalPartidas ?? (partidas || []).length}`, 14, finalY + 6);
+      doc.text('FIN DEL REPORTE.', 14, finalY + 11);
+      if ((doc as any).lastAutoTable) {
+        (doc as any).lastAutoTable.finalY = finalY + 12;
+      }
 
       drawSignatures(doc, report, orientation);
       break;
