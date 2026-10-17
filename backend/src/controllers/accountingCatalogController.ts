@@ -78,6 +78,10 @@ export function deriveGDM(nivelCta: string): string {
 export async function listAccounts(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const {
       ejercicio,
       search,
@@ -103,7 +107,7 @@ export async function listAccounts(req: Request, res: Response) {
         cod_emp,
         g_d_m
       FROM cat_cuentas
-      WHERE (cod_emp = ? OR cod_emp IS NULL)
+      WHERE cod_emp = ?
     `;
     const params: any[] = [codEmp];
 
@@ -152,10 +156,14 @@ export async function listAccounts(req: Request, res: Response) {
 export async function getAvailableYears(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT DISTINCT ejercicio 
        FROM cat_cuentas 
-       WHERE (cod_emp = ? OR cod_emp IS NULL) AND ejercicio IS NOT NULL AND ejercicio != ''
+       WHERE cod_emp = ? AND ejercicio IS NOT NULL AND ejercicio != ''
        ORDER BY ejercicio DESC`,
       [codEmp]
     );
@@ -173,10 +181,14 @@ export async function getAvailableYears(req: Request, res: Response) {
 export async function getAccountById(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const { id } = req.params;
 
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM cat_cuentas WHERE id_cta = ? AND (cod_emp = ? OR cod_emp IS NULL)`,
+      `SELECT * FROM cat_cuentas WHERE id_cta = ? AND cod_emp = ?`,
       [id, codEmp]
     );
 
@@ -197,10 +209,14 @@ export async function getAccountById(req: Request, res: Response) {
 export async function getAccountTypes(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT cod_tp_cta, nom_cta, letra_cta, corr 
        FROM tipo_cuenta 
-       WHERE (cod_emp = ? OR cod_emp IS NULL) 
+       WHERE cod_emp = ? 
        ORDER BY cod_tp_cta ASC`,
       [codEmp]
     );
@@ -217,6 +233,10 @@ export async function getAccountTypes(req: Request, res: Response) {
 export async function createAccount(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const body: CuentaContable = req.body;
 
     if (!body.cod_cta || !body.nom_cta || !body.ejercicio) {
@@ -294,11 +314,15 @@ export async function createAccount(req: Request, res: Response) {
 export async function updateAccount(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const { id } = req.params;
     const body: Partial<CuentaContable> = req.body;
 
     const [existing] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM cat_cuentas WHERE id_cta = ? AND (cod_emp = ? OR cod_emp IS NULL)`,
+      `SELECT * FROM cat_cuentas WHERE id_cta = ? AND cod_emp = ?`,
       [id, codEmp]
     );
 
@@ -324,7 +348,7 @@ export async function updateAccount(req: Request, res: Response) {
         deudor = ?,
         nivel_cta = ?,
         g_d_m = ?
-       WHERE id_cta = ? AND (cod_emp = ? OR cod_emp IS NULL)`,
+       WHERE id_cta = ? AND cod_emp = ?`,
       [nomCta, codTpCta, depCta, acreedor, deudor, nivelCta, gdm, id, codEmp]
     );
 
@@ -341,10 +365,14 @@ export async function updateAccount(req: Request, res: Response) {
 export async function deleteAccount(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const { id } = req.params;
 
     const [existing] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM cat_cuentas WHERE id_cta = ? AND (cod_emp = ? OR cod_emp IS NULL)`,
+      `SELECT * FROM cat_cuentas WHERE id_cta = ? AND cod_emp = ?`,
       [id, codEmp]
     );
 
@@ -368,8 +396,8 @@ export async function deleteAccount(req: Request, res: Response) {
 
     // Check if account is used in any journal entry details
     const [partidas] = await pool.query<RowDataPacket[]>(
-      `SELECT cod_part FROM detalle_partida WHERE id_cta = ? OR (cod_cta = ? AND cod_emp = ?) LIMIT 1`,
-      [id, account.cod_cta, codEmp]
+      `SELECT cod_part FROM detalle_partida WHERE cod_emp = ? AND (id_cta = ? OR cod_cta = ?) LIMIT 1`,
+      [codEmp, id, account.cod_cta]
     );
 
     if (partidas.length > 0) {
@@ -379,7 +407,7 @@ export async function deleteAccount(req: Request, res: Response) {
     }
 
     await pool.query(
-      `DELETE FROM cat_cuentas WHERE id_cta = ? AND (cod_emp = ? OR cod_emp IS NULL)`,
+      `DELETE FROM cat_cuentas WHERE id_cta = ? AND cod_emp = ?`,
       [id, codEmp]
     );
 
@@ -396,6 +424,10 @@ export async function deleteAccount(req: Request, res: Response) {
 export async function copyCatalogFromYear(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const { sourceYear, targetYear } = req.body;
 
     if (!sourceYear || !targetYear) {
@@ -471,6 +503,10 @@ export async function copyCatalogFromYear(req: Request, res: Response) {
 export async function verifyImportCatalog(req: Request, res: Response) {
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const { rows, ejercicio } = req.body as { rows: AccountImportRow[]; ejercicio: string };
 
     if (!rows || !Array.isArray(rows) || rows.length === 0) {
@@ -594,6 +630,10 @@ export async function saveImportCatalog(req: Request, res: Response) {
   const connection = await pool.getConnection();
   try {
     const codEmp = req.usuario?.cod_emp ?? (req as any).user?.cod_emp;
+    if (!codEmp) {
+      return res.status(401).json({ error: 'Empresa no autenticada.' });
+    }
+
     const { rows, ejercicio, mode } = req.body as {
       rows: AccountImportRow[];
       ejercicio: string;
@@ -642,8 +682,8 @@ export async function saveImportCatalog(req: Request, res: Response) {
               deudor = ?,
               nivel_cta = ?,
               g_d_m = ?
-             WHERE id_cta = ?`,
-            [nomCta, codTpCta, depCta, acreedor, deudor, nivelCta, gdm, existing[0].id_cta]
+             WHERE id_cta = ? AND cod_emp = ?`,
+            [nomCta, codTpCta, depCta, acreedor, deudor, nivelCta, gdm, existing[0].id_cta, codEmp]
           );
           updated++;
         }
