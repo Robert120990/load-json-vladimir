@@ -150,16 +150,17 @@ export async function listJournalEntries(req: Request, res: Response) {
       }
     }
 
-    // Get count and totals
+    // Get count and totals (exclude annulled entries from cargo/abono totals unless filtering specifically for annulled)
+    const includeAnuladasInSum = String(anulada) === '1' ? 1 : 0;
     const [summaryRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         COUNT(*) as total,
-        COALESCE(SUM(c.cargo_part), 0) as total_cargos,
-        COALESCE(SUM(c.abono_part), 0) as total_abonos,
+        COALESCE(SUM(CASE WHEN COALESCE(c.anulada_part, 0) = 0 OR ? = 1 THEN c.cargo_part ELSE 0 END), 0) as total_cargos,
+        COALESCE(SUM(CASE WHEN COALESCE(c.anulada_part, 0) = 0 OR ? = 1 THEN c.abono_part ELSE 0 END), 0) as total_abonos,
         COALESCE(SUM(CASE WHEN c.anulada_part = 1 THEN 1 ELSE 0 END), 0) as total_anuladas,
-        COALESCE(SUM(CASE WHEN c.anulada_part = 0 THEN 1 ELSE 0 END), 0) as total_activas
+        COALESCE(SUM(CASE WHEN COALESCE(c.anulada_part, 0) = 0 THEN 1 ELSE 0 END), 0) as total_activas
        FROM cabecera_partida c ${whereClause}`,
-      params
+      [includeAnuladasInSum, includeAnuladasInSum, ...params]
     );
 
     const summary = summaryRows[0] || {
