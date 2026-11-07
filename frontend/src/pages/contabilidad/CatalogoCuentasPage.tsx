@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   ArrowRight,
+  Building2,
   CheckCircle2,
   Copy,
   Download,
@@ -446,7 +447,16 @@ export default function CatalogoCuentasPage() {
         {/* Top Header & Actions */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Catálogo de Cuentas</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '4px' }}>
+            <h1 className="page-title" style={{ margin: 0 }}>Catálogo de Cuentas</h1>
+            {empresa && (
+              <div className="empresa-active-pill">
+                <Building2 size={16} />
+                <span className="font-bold">{empresa.nom_emp || `Empresa #${empresa.cod_emp}`}</span>
+                <span className="text-xs text-muted font-mono">(#{empresa.cod_emp})</span>
+              </div>
+            )}
+          </div>
           <p className="page-subtitle">
             Estructura contable oficial, jerarquías y cuentas imputables por ejercicio fiscal
           </p>

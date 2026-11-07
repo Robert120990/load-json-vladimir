@@ -76,6 +76,55 @@ export async function mayorizarCuentas(req: Request, res: Response) {
       grandTotalAbono += abono;
     }
 
+    // 2.5 Fetch existing initial balances (month 00) or carry over from previous exercise if no opening entry exists
+    const [existingInitRows]: any = await connection.query(
+      `SELECT cod_cta, cargo00, abono00, saldo00
+       FROM cuentas_saldos
+       WHERE cod_emp = ? AND ejercicio = ?`,
+      [codEmp, ejercicio]
+    );
+
+    const initBalanceMap = new Map<string, { cargo00: number; abono00: number; saldo00: number }>();
+    let hasNonZeroInit = false;
+    for (const r of existingInitRows) {
+      const c00 = Number(r.cargo00) || 0;
+      const a00 = Number(r.abono00) || 0;
+      const s00 = Number(r.saldo00) || 0;
+      if (c00 !== 0 || a00 !== 0 || s00 !== 0) {
+        hasNonZeroInit = true;
+      }
+      initBalanceMap.set(String(r.cod_cta).trim(), { cargo00: c00, abono00: a00, saldo00: s00 });
+    }
+
+    if (!hasNonZeroInit) {
+      const [openingEntries]: any = await connection.query(
+        `SELECT COUNT(*) AS cnt FROM cabecera_partida
+         WHERE cod_emp = ? AND YEAR(fec_partida) = ? AND cod_tp_part = '11'
+           AND (anulada_part IS NULL OR anulada_part = 0)`,
+        [codEmp, ejercicio]
+      );
+      if (Number(openingEntries[0]?.cnt || 0) === 0) {
+        const [prevYearRows]: any = await connection.query(
+          `SELECT cod_cta, saldo12, comportamiento
+           FROM cuentas_saldos
+           WHERE cod_emp = ? AND ejercicio = ?
+             AND (cod_cta LIKE '1%' OR cod_cta LIKE '2%' OR cod_cta LIKE '3%')`,
+          [codEmp, ejercicio - 1]
+        );
+        for (const r of prevYearRows) {
+          const s12 = Number(r.saldo12) || 0;
+          if (s12 !== 0) {
+            const isDeud = Number(r.comportamiento) === 1;
+            initBalanceMap.set(String(r.cod_cta).trim(), {
+              cargo00: isDeud && s12 > 0 ? s12 : (!isDeud && s12 < 0 ? Math.abs(s12) : 0),
+              abono00: !isDeud && s12 > 0 ? s12 : (isDeud && s12 < 0 ? Math.abs(s12) : 0),
+              saldo00: s12,
+            });
+          }
+        }
+      }
+    }
+
     // 3. Prepare data structure for all accounts with rollup
     type AccountData = {
       cod_cta: string;
@@ -101,6 +150,13 @@ export async function mayorizarCuentas(req: Request, res: Response) {
       const cargos = new Array(13).fill(0);
       const abonos = new Array(13).fill(0);
       const saldos = new Array(13).fill(0);
+
+      const initBal = initBalanceMap.get(cta);
+      if (initBal) {
+        cargos[0] = initBal.cargo00;
+        abonos[0] = initBal.abono00;
+        saldos[0] = initBal.saldo00;
+      }
 
       // Initialize with direct transactions if any
       const direct = accountDirectTotals[cta];
@@ -435,14 +491,26 @@ export async function generarReporteContable(req: Request, res: Response) {
           [codEmp, ano, fDesde]
         );
 
+        const [saldo00Rows]: any = await pool.query(
+          `SELECT cod_cta, saldo00 FROM cuentas_saldos WHERE cod_emp = ? AND ejercicio = ?`,
+          [codEmp, ano]
+        );
+
         const initMap = new Map<string, number>();
+        for (const r of saldo00Rows) {
+          const cta = String(r.cod_cta).trim();
+          const s00 = Number(r.saldo00) || 0;
+          if (s00 !== 0) {
+            initMap.set(cta, s00);
+          }
+        }
         for (const r of initRows) {
           const cta = String(r.cod_cta).trim();
           const isAcreedor = cta.startsWith('2') || cta.startsWith('3') || cta.startsWith('5');
           const net = isAcreedor
             ? (Number(r.sum_abono) || 0) - (Number(r.sum_cargo) || 0)
             : (Number(r.sum_cargo) || 0) - (Number(r.sum_abono) || 0);
-          initMap.set(cta, net);
+          initMap.set(cta, (initMap.get(cta) || 0) + net);
         }
 
         // Group by account
