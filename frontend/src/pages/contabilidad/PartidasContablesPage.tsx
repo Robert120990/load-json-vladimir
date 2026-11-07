@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   Ban,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Edit2,
   Eye,
   Filter,
@@ -73,6 +75,8 @@ export default function PartidasContablesPage() {
   const [filterTipo, setFilterTipo] = useState<string>('');
   const [filterAnulada, setFilterAnulada] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(50);
 
   // Summary
   const [summary, setSummary] = useState({
@@ -125,8 +129,8 @@ export default function PartidasContablesPage() {
   }, []);
 
   useEffect(() => {
-    cargarListadoPartidas();
-  }, [filterYear, filterMonth, filterTipo, filterAnulada]);
+    cargarListadoPartidas(page);
+  }, [filterYear, filterMonth, filterTipo, filterAnulada, page, limit]);
 
   useEffect(() => {
     cargarCuentasDelEjercicio(filterYear);
@@ -159,7 +163,7 @@ export default function PartidasContablesPage() {
     }
   }
 
-  async function cargarListadoPartidas() {
+  async function cargarListadoPartidas(targetPage = page, searchOverride = searchTerm) {
     setLoading(true);
     try {
       const res = await listarPartidas({
@@ -167,7 +171,9 @@ export default function PartidasContablesPage() {
         mes: filterMonth || undefined,
         cod_tp_part: filterTipo || undefined,
         anulada: filterAnulada !== '' ? filterAnulada : undefined,
-        search: searchTerm || undefined,
+        search: searchOverride || undefined,
+        limit,
+        offset: (targetPage - 1) * limit,
       });
       setPartidas(res.data);
       setSummary(res.summary);
@@ -528,7 +534,10 @@ export default function PartidasContablesPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') cargarListadoPartidas();
+              if (e.key === 'Enter') {
+                if (page !== 1) setPage(1);
+                else cargarListadoPartidas(1, searchTerm);
+              }
             }}
           />
           {searchTerm && (
@@ -537,7 +546,8 @@ export default function PartidasContablesPage() {
               className="clear-search-btn"
               onClick={() => {
                 setSearchTerm('');
-                cargarListadoPartidas();
+                if (page !== 1) setPage(1);
+                else cargarListadoPartidas(1, '');
               }}
             >
               <X size={16} />
@@ -551,7 +561,10 @@ export default function PartidasContablesPage() {
             <select
               className="filter-select font-bold"
               value={filterYear}
-              onChange={(e) => setFilterYear(Number(e.target.value))}
+              onChange={(e) => {
+                setPage(1);
+                setFilterYear(Number(e.target.value));
+              }}
             >
               {[2027, 2026, 2025, 2024, 2023, 2022].map((y) => (
                 <option key={y} value={y}>
@@ -566,7 +579,10 @@ export default function PartidasContablesPage() {
             <select
               className="filter-select"
               value={filterMonth}
-              onChange={(e) => setFilterMonth(Number(e.target.value))}
+              onChange={(e) => {
+                setPage(1);
+                setFilterMonth(Number(e.target.value));
+              }}
             >
               <option value="0">Todos los Meses</option>
               {meses.map((m) => (
@@ -583,7 +599,10 @@ export default function PartidasContablesPage() {
             <select
               className="filter-select"
               value={filterTipo}
-              onChange={(e) => setFilterTipo(e.target.value)}
+              onChange={(e) => {
+                setPage(1);
+                setFilterTipo(e.target.value);
+              }}
             >
               <option value="">Todos los Tipos</option>
               {tiposPartida.map((tp) => (
@@ -599,7 +618,10 @@ export default function PartidasContablesPage() {
             <select
               className="filter-select"
               value={filterAnulada}
-              onChange={(e) => setFilterAnulada(e.target.value)}
+              onChange={(e) => {
+                setPage(1);
+                setFilterAnulada(e.target.value);
+              }}
             >
               <option value="">Todas (Activas/Anuladas)</option>
               <option value="0">Solo Activas</option>
@@ -610,7 +632,7 @@ export default function PartidasContablesPage() {
           <button
             type="button"
             className="btn-secundario btn-sm"
-            onClick={cargarListadoPartidas}
+            onClick={() => cargarListadoPartidas(page)}
             title="Recargar listado"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -737,6 +759,70 @@ export default function PartidasContablesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {(() => {
+          const total = Number(summary.total) || 0;
+          const totalPages = Math.ceil(total / limit) || 1;
+          const from = total === 0 ? 0 : (page - 1) * limit + 1;
+          const to = Math.min(page * limit, total);
+          return (
+            <div className="datatable-footer">
+              <div className="datatable-info" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <span>
+                  Mostrando <strong>{from}</strong> a <strong>{to}</strong> de{' '}
+                  <strong>{total}</strong> partidas
+                </span>
+                <div className="datatable-controls">
+                  <span className="control-label">Mostrar:</span>
+                  <select
+                    className="select-limit"
+                    value={limit}
+                    onChange={(e) => {
+                      setPage(1);
+                      setLimit(Number(e.target.value));
+                    }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                  </select>
+                  <span className="control-label">por pág.</span>
+                </div>
+              </div>
+
+              <div className="datatable-pagination">
+                <button
+                  type="button"
+                  className="btn-paginacion"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || loading}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft size={16} />
+                  Anterior
+                </button>
+
+                <span className="pagina-actual">
+                  Página <strong>{page}</strong> de <strong>{totalPages}</strong>
+                </span>
+
+                <button
+                  type="button"
+                  className="btn-paginacion"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || loading}
+                  aria-label="Página siguiente"
+                >
+                  Siguiente
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* MODAL: Partida Editor (Create / Edit) */}
