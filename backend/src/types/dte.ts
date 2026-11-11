@@ -56,6 +56,38 @@ export interface CuerpoItem {
   psv?: number;
   noGravado?: number;
   codigo?: string;
+  valorOperaciones?: number;
+  montoSinPercepcion?: number;
+  subTotal?: number;
+  iva?: number;
+  IVA?: number;
+  montoSujetoPercepcion?: number;
+  ivaPercibido?: number;
+  IVApercibido?: number;
+  liquidoApagar?: number;
+}
+
+export interface CuerpoLiquidacionContable {
+  periodoLiquidacionFechaInicio?: string;
+  periodoLiquidacionFechaFin?: string;
+  codLiquidacion?: string | number | null;
+  cantidadDoc?: number | null;
+  valorOperaciones?: number;
+  montoSinPercepcion?: number;
+  descripSinPercepcion?: string | null;
+  subTotal?: number;
+  iva?: number;
+  IVA?: number;
+  montoSujetoPercepcion?: number;
+  ivaPercibido?: number;
+  IVApercibido?: number;
+  comision?: number;
+  porcentComision?: string | number | null;
+  ivaComision?: number;
+  IVAcomision?: number;
+  liquidoApagar?: number;
+  totalLetras?: string;
+  observaciones?: string | null;
 }
 
 export interface TributoResumen {
@@ -74,6 +106,11 @@ export interface Pago {
 
 export interface Resumen {
   ivaPerci1?: number;
+  ivaPerci?: number;
+  ivaPercibido?: number;
+  IVApercibido?: number;
+  montoSujetoPercepcion?: number;
+  valorOperaciones?: number;
   totalNoSuj?: number;
   totalExenta?: number;
   totalGravada?: number;
@@ -90,6 +127,8 @@ export interface Resumen {
   montoTotalOperacion?: number;
   totalNoGravado?: number;
   totalPagar?: number;
+  total?: number;
+  liquidoApagar?: number;
   totalLetras?: string;
   saldoFavor?: number;
   condicionOperacion?: number;
@@ -128,7 +167,7 @@ export interface DteJson {
   otrosDocumentos?: unknown;
   documentoRelacionado?: unknown;
   ventaTercero?: unknown;
-  cuerpoDocumento?: CuerpoItem[];
+  cuerpoDocumento?: CuerpoItem[] | CuerpoLiquidacionContable;
   resumen?: Resumen;
   extension?: Extension;
   apendice?: unknown;

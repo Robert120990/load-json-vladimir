@@ -287,6 +287,13 @@ export default function ReportesContablesPage() {
     }
   }
 
+  // Automatically default to Nivel 6 (Detalle Analítico) when selecting Cuadro de Ingresos y Gastos
+  useEffect(() => {
+    if (selectedReportId === 'cuadro_ingresos_gastos') {
+      setParamNivel(6);
+    }
+  }, [selectedReportId]);
+
   // Invalidate generated report whenever parameters or active report change
   useEffect(() => {
     setReporteGenerado(null);
@@ -1374,46 +1381,130 @@ export default function ReportesContablesPage() {
                   )}
 
                   {/* 11. Cuadro de Ingresos y Gastos */}
-                  {reporteGenerado.reportId === 'cuadro_ingresos_gastos' && (
-                    <div className="report-table-wrapper">
-                      <table className="official-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '100px' }}>CODIGO</th>
-                            <th>DESCRIPCION DE LA CUENTA</th>
-                            <th className="th-right" style={{ width: '110px' }}>SALDO ANTERIOR</th>
-                            <th className="th-right" style={{ width: '110px' }}>CARGOS MES</th>
-                            <th className="th-right" style={{ width: '110px' }}>ABONOS MES</th>
-                            <th className="th-right" style={{ width: '120px' }}>SALDO ACUMULADO</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(reporteGenerado.data.filas || []).map((f: any) => (
-                            <tr key={f.cod_cta} style={{ fontWeight: f.nivel_cta <= 2 ? 'bold' : 'normal' }}>
-                              <td className="font-mono">{f.cod_cta}</td>
-                              <td style={{ paddingLeft: `${Math.max(0, (f.nivel_cta - 1) * 12 + 8)}px` }}>{f.nom_cta}</td>
-                              <td className="text-right font-mono">{formatCurrency(f.saldo_ant)}</td>
-                              <td className="text-right font-mono">{formatCurrency(f.cargos)}</td>
-                              <td className="text-right font-mono">{formatCurrency(f.abonos)}</td>
-                              <td className="text-right font-mono">{formatCurrency(f.saldo_act)}</td>
+                  {reporteGenerado.reportId === 'cuadro_ingresos_gastos' && (() => {
+                    const monthHeaders = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPT.', 'OCT.', 'NOV.', 'DIC.'];
+                    const ingresosRows = reporteGenerado.data.ingresosRows || (reporteGenerado.data.filas || []).filter((f: any) => f.esIngreso);
+                    const gastosRows = reporteGenerado.data.gastosRows || (reporteGenerado.data.filas || []).filter((f: any) => !f.esIngreso);
+                    const resultadoNetoMeses: number[] = reporteGenerado.data.resultadoNetoMeses || Array(12).fill(0);
+                    const fmtCell = (val: number) => {
+                      const n = Number(val) || 0;
+                      if (Math.abs(n) < 0.005) return '$ -';
+                      return `$ ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    };
+
+                    return (
+                      <div className="report-table-wrapper" style={{ overflowX: 'auto' }}>
+                        <table className="official-table" style={{ fontSize: '0.73rem', minWidth: '1180px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ borderTop: '2px solid #0f172a', borderBottom: '2px solid #0f172a' }}>
+                              <th style={{ minWidth: '220px', textAlign: 'left', padding: '6px 8px' }}>CUENTA CONTABLE</th>
+                              {monthHeaders.map((mh) => (
+                                <th key={mh} className="th-right" style={{ minWidth: '72px', padding: '6px 5px' }}>{mh}</th>
+                              ))}
+                              <th className="th-right" style={{ minWidth: '82px', padding: '6px 6px' }}>ACUM.</th>
                             </tr>
-                          ))}
-                          <tr className="tr-subtotal font-bold">
-                            <td colSpan={5} className="text-right">TOTAL INGRESOS (GRUPO 5) :</td>
-                            <td className="text-right font-mono font-bold">{formatCurrency(reporteGenerado.data.totalIngresos)}</td>
-                          </tr>
-                          <tr className="tr-subtotal font-bold">
-                            <td colSpan={5} className="text-right">TOTAL GASTOS Y COSTOS (GRUPO 4) :</td>
-                            <td className="text-right font-mono font-bold">{formatCurrency(reporteGenerado.data.totalGastos)}</td>
-                          </tr>
-                          <tr className="tr-totales font-bold text-primary">
-                            <td colSpan={5} className="text-right">RESULTADO NETO DEL PERIODO :</td>
-                            <td className="text-right font-mono font-bold">{formatCurrency(reporteGenerado.data.resultadoNeto)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody>
+                            {/* Sección 1: Cuentas de Resultado Acreedoras (Grupo 5) */}
+                            {ingresosRows.map((f: any, idx: number) => {
+                              const isRoot = f.nivel_cta === 1 || idx === 0;
+                              const isGroup = f.nivel_cta <= 3;
+                              const meses: number[] = f.meses || Array(12).fill(0);
+                              const acum = f.acumulado !== undefined ? f.acumulado : f.saldo_act;
+                              return (
+                                <tr
+                                  key={`ing-${f.cod_cta}`}
+                                  style={{
+                                    fontWeight: isRoot ? 700 : isGroup ? 600 : 400,
+                                    backgroundColor: isRoot ? '#f8fafc' : 'transparent',
+                                    borderTop: isRoot ? '1.5px solid #0f172a' : undefined,
+                                    borderBottom: isRoot ? '1px solid #cbd5e1' : undefined,
+                                  }}
+                                >
+                                  <td
+                                    style={{
+                                      paddingLeft: `${Math.max(0, (f.nivel_cta - 1) * 10 + 6)}px`,
+                                      paddingRight: '8px',
+                                      paddingTop: '3px',
+                                      paddingBottom: '3px',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                    title={`${f.cod_cta} - ${f.nom_cta}`}
+                                  >
+                                    {f.nom_cta}
+                                  </td>
+                                  {meses.map((mVal: number, mIdx: number) => (
+                                    <td key={mIdx} className="text-right font-mono" style={{ padding: '3px 5px', whiteSpace: 'nowrap' }}>
+                                      {fmtCell(mVal)}
+                                    </td>
+                                  ))}
+                                  <td className="text-right font-mono font-bold" style={{ padding: '3px 6px', whiteSpace: 'nowrap' }}>
+                                    {fmtCell(acum)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+
+                            {/* Sección 2: Cuentas Resultado Deudoras (Grupo 4) */}
+                            {gastosRows.map((f: any, idx: number) => {
+                              const isRoot = f.nivel_cta === 1 || idx === 0;
+                              const isGroup = f.nivel_cta <= 3;
+                              const meses: number[] = f.meses || Array(12).fill(0);
+                              const acum = f.acumulado !== undefined ? f.acumulado : f.saldo_act;
+                              return (
+                                <tr
+                                  key={`gas-${f.cod_cta}`}
+                                  style={{
+                                    fontWeight: isRoot ? 700 : isGroup ? 600 : 400,
+                                    backgroundColor: isRoot ? '#f8fafc' : 'transparent',
+                                    borderTop: idx === 0 ? '2px solid #0f172a' : undefined,
+                                    borderBottom: isRoot ? '1px solid #cbd5e1' : undefined,
+                                  }}
+                                >
+                                  <td
+                                    style={{
+                                      paddingLeft: `${Math.max(0, (f.nivel_cta - 1) * 10 + 6)}px`,
+                                      paddingRight: '8px',
+                                      paddingTop: '3px',
+                                      paddingBottom: '3px',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                    title={`${f.cod_cta} - ${f.nom_cta}`}
+                                  >
+                                    {f.nom_cta}
+                                  </td>
+                                  {meses.map((mVal: number, mIdx: number) => (
+                                    <td key={mIdx} className="text-right font-mono" style={{ padding: '3px 5px', whiteSpace: 'nowrap' }}>
+                                      {fmtCell(mVal)}
+                                    </td>
+                                  ))}
+                                  <td className="text-right font-mono font-bold" style={{ padding: '3px 6px', whiteSpace: 'nowrap' }}>
+                                    {fmtCell(acum)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+
+                            {/* Resultado Neto Mensual y Acumulado */}
+                            <tr
+                              className="tr-totales font-bold text-primary"
+                              style={{ borderTop: '2px solid #0f172a', borderBottom: '2px solid #0f172a', backgroundColor: '#eef2ff' }}
+                            >
+                              <td style={{ padding: '6px 8px', fontWeight: 700 }}>RESULTADO NETO (INGRESOS - EGRESOS)</td>
+                              {resultadoNetoMeses.map((mVal: number, mIdx: number) => (
+                                <td key={mIdx} className="text-right font-mono font-bold" style={{ padding: '6px 5px', whiteSpace: 'nowrap' }}>
+                                  {fmtCell(mVal)}
+                                </td>
+                              ))}
+                              <td className="text-right font-mono font-bold" style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>
+                                {fmtCell(reporteGenerado.data.resultadoNeto)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
 
                   {/* 12. Balance Comparativo */}
                   {reporteGenerado.reportId === 'balance_comparativo' && (

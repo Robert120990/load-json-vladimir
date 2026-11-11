@@ -743,37 +743,126 @@ export function exportAccountingReportToPdf(report: ReporteContableResponse) {
     // 11. CUADRO DE INGRESOS Y GASTOS
     // -------------------------------------------------------------
     case 'cuadro_ingresos_gastos': {
-      const { filas, totalIngresos, totalGastos, resultadoNeto } = report.data;
+      const { filas, ingresosRows: rawIng, gastosRows: rawGas, resultadoNetoMeses: rawResMeses, resultadoNeto } = report.data;
+      const ingresosRows = rawIng || (filas || []).filter((f: any) => f.esIngreso);
+      const gastosRows = rawGas || (filas || []).filter((f: any) => !f.esIngreso);
+      const resultadoNetoMeses: number[] = rawResMeses || Array(12).fill(0);
 
-      const rows = (filas || []).map((f: any) => [
-        f.cod_cta,
-        f.nom_cta,
-        formatCurrency(f.saldo_ant),
-        formatCurrency(f.cargos),
-        formatCurrency(f.abonos),
-        formatCurrency(f.saldo_act),
-      ]);
+      const fmtDash = (val: any) => {
+        const n = Number(val) || 0;
+        if (Math.abs(n) < 0.005) return '$ -';
+        return `$ ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      };
 
-      rows.push(
-        [{ content: 'TOTAL INGRESOS (GRUPO 5)', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } }, { content: formatCurrency(totalIngresos), styles: { fontStyle: 'bold', halign: 'right' } }],
-        [{ content: 'TOTAL GASTOS Y COSTOS (GRUPO 4)', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } }, { content: formatCurrency(totalGastos), styles: { fontStyle: 'bold', halign: 'right' } }],
-        [{ content: 'RESULTADO NETO DEL PERIODO', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 235, 245] } }, { content: formatCurrency(resultadoNeto), styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 235, 245] } }],
-      );
+      const rows: any[] = [];
+
+      const pushSectionRows = (sectionRows: any[], isSecondSection: boolean) => {
+        sectionRows.forEach((f: any, idx: number) => {
+          const isRoot = f.nivel_cta === 1 || idx === 0;
+          const isGroup = f.nivel_cta <= 3;
+          const indent = '  '.repeat(Math.max(0, (Number(f.nivel_cta) || 1) - 1));
+          const meses: number[] = f.meses || Array(12).fill(0);
+          const acum = f.acumulado !== undefined ? f.acumulado : f.saldo_act;
+
+          const rowStyle: any = {
+            fontStyle: isRoot || isGroup ? 'bold' : 'normal',
+            fillColor: isRoot ? [245, 247, 250] : [255, 255, 255],
+          };
+
+          const cells: any[] = [
+            {
+              content: `${indent}${f.nom_cta}`,
+              styles: { ...rowStyle, halign: 'left' },
+              _isRoot: isRoot,
+              _isSecondSectionStart: isSecondSection && idx === 0,
+            },
+          ];
+
+          for (let m = 0; m < 12; m++) {
+            cells.push({
+              content: fmtDash(meses[m]),
+              styles: { ...rowStyle, halign: 'right' },
+            });
+          }
+
+          cells.push({
+            content: fmtDash(acum),
+            styles: { ...rowStyle, fontStyle: 'bold', halign: 'right' },
+          });
+
+          rows.push(cells);
+        });
+      };
+
+      pushSectionRows(ingresosRows, false);
+      pushSectionRows(gastosRows, true);
+
+      // Final Resultado Neto Row
+      const netCells: any[] = [
+        {
+          content: 'RESULTADO NETO (INGRESOS - EGRESOS)',
+          styles: { fontStyle: 'bold', halign: 'left', fillColor: [230, 235, 245] },
+          _isNetRow: true,
+        },
+      ];
+      for (let m = 0; m < 12; m++) {
+        netCells.push({
+          content: fmtDash(resultadoNetoMeses[m]),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 235, 245] },
+        });
+      }
+      netCells.push({
+        content: fmtDash(resultadoNeto),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 235, 245] },
+      });
+      rows.push(netCells);
 
       autoTable(doc, {
-        head: [['CODIGO', 'DESCRIPCION DE LA CUENTA', 'SALDO ANTERIOR', 'CARGOS MES', 'ABONOS MES', 'SALDO ACUMULADO']],
+        head: [['CUENTA CONTABLE', 'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPT.', 'OCT.', 'NOV.', 'DIC.', 'ACUM.']],
         body: rows,
         startY,
-        theme: 'grid',
-        styles: { fontSize: 7, cellPadding: 1.2 },
-        headStyles: { fillColor: [240, 242, 245], textColor: [0, 0, 0], fontStyle: 'bold' },
+        margin: { left: 7, right: 7 },
+        theme: 'plain',
+        styles: { fontSize: 5.7, cellPadding: { top: 0.7, bottom: 0.7, left: 0.8, right: 0.8 }, textColor: [15, 23, 42] },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          fontSize: 6,
+          halign: 'right',
+          lineWidth: { top: 0.35, bottom: 0.35 },
+          lineColor: [0, 0, 0],
+        },
         columnStyles: {
-          0: { cellWidth: 24 },
-          1: { cellWidth: 95 },
-          2: { halign: 'right', cellWidth: 32 },
-          3: { halign: 'right', cellWidth: 32 },
-          4: { halign: 'right', cellWidth: 32 },
-          5: { halign: 'right', cellWidth: 35, fontStyle: 'bold' },
+          0: { cellWidth: 53, halign: 'left' },
+          1: { halign: 'right', cellWidth: 16 },
+          2: { halign: 'right', cellWidth: 16 },
+          3: { halign: 'right', cellWidth: 16 },
+          4: { halign: 'right', cellWidth: 16 },
+          5: { halign: 'right', cellWidth: 16 },
+          6: { halign: 'right', cellWidth: 16 },
+          7: { halign: 'right', cellWidth: 16 },
+          8: { halign: 'right', cellWidth: 16 },
+          9: { halign: 'right', cellWidth: 16 },
+          10: { halign: 'right', cellWidth: 14.5 },
+          11: { halign: 'right', cellWidth: 14.5 },
+          12: { halign: 'right', cellWidth: 14.5 },
+          13: { halign: 'right', cellWidth: 18.5, fontStyle: 'bold' },
+        },
+        didParseCell: (hookData: any) => {
+          if (hookData.section === 'head' && hookData.column.index === 0) {
+            hookData.cell.styles.halign = 'left';
+          }
+          if (hookData.section === 'body') {
+            const firstCell = hookData.row.raw?.[0];
+            if (firstCell?._isSecondSectionStart || firstCell?._isNetRow) {
+              hookData.cell.styles.lineWidth = { top: 0.35, bottom: firstCell?._isNetRow ? 0.35 : 0.1 };
+              hookData.cell.styles.lineColor = [0, 0, 0];
+            } else if (firstCell?._isRoot) {
+              hookData.cell.styles.lineWidth = { bottom: 0.15 };
+              hookData.cell.styles.lineColor = [100, 116, 139];
+            }
+          }
         },
       });
 

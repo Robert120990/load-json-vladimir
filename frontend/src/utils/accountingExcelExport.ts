@@ -301,17 +301,42 @@ export function exportAccountingReportToExcel(report: ReporteContableResponse) {
     // 11. CUADRO DE INGRESOS Y GASTOS
     // -------------------------------------------------------------
     case 'cuadro_ingresos_gastos': {
-      const { filas, totalIngresos, totalGastos, resultadoNeto } = report.data;
+      const { filas, ingresosRows: rawIng, gastosRows: rawGas, resultadoNetoMeses: rawResMeses, resultadoNeto } = report.data;
+      const ingresosRows = rawIng || (filas || []).filter((f: any) => f.esIngreso);
+      const gastosRows = rawGas || (filas || []).filter((f: any) => !f.esIngreso);
+      const resultadoNetoMeses: number[] = rawResMeses || Array(12).fill(0);
 
-      sheetData.push(['CODIGO', 'DESCRIPCION DE LA CUENTA', 'SALDO ANTERIOR', 'CARGOS MES', 'ABONOS MES', 'SALDO ACUMULADO']);
+      sheetData.push([
+        'CUENTA CONTABLE',
+        'ENERO',
+        'FEBRERO',
+        'MARZO',
+        'ABRIL',
+        'MAYO',
+        'JUNIO',
+        'JULIO',
+        'AGOSTO',
+        'SEPT.',
+        'OCT.',
+        'NOV.',
+        'DIC.',
+        'ACUM.',
+      ]);
 
-      (filas || []).forEach((f: any) => {
-        sheetData.push([f.cod_cta, f.nom_cta, f.saldo_ant, f.cargos, f.abonos, f.saldo_act]);
-      });
+      const pushExcelRows = (rowsList: any[]) => {
+        rowsList.forEach((f: any) => {
+          const indent = '  '.repeat(Math.max(0, (Number(f.nivel_cta) || 1) - 1));
+          const meses: number[] = f.meses || Array(12).fill(0);
+          const acum = f.acumulado !== undefined ? f.acumulado : f.saldo_act;
+          sheetData.push([`${indent}${f.nom_cta}`, ...meses, acum]);
+        });
+      };
 
-      sheetData.push(['TOTAL INGRESOS (GRUPO 5)', '', '', '', '', totalIngresos]);
-      sheetData.push(['TOTAL GASTOS Y COSTOS (GRUPO 4)', '', '', '', '', totalGastos]);
-      sheetData.push(['RESULTADO NETO DEL PERIODO', '', '', '', '', resultadoNeto]);
+      pushExcelRows(ingresosRows);
+      sheetData.push([]);
+      pushExcelRows(gastosRows);
+      sheetData.push([]);
+      sheetData.push(['RESULTADO NETO (INGRESOS - EGRESOS)', ...resultadoNetoMeses, resultadoNeto]);
       break;
     }
 

@@ -254,6 +254,12 @@ export default function ComprasIvaPage() {
     return clean === '09' || clean === '9';
   }
 
+  function esLiquidacion(tipo?: string): boolean {
+    if (!tipo) return false;
+    const clean = String(tipo).trim();
+    return clean === '07' || clean === '7';
+  }
+
   function abrirModalEditar(compra: PurchaseIva) {
     setSelectedCompra(compra);
     const isNC = esNotaCredito(compra.id_tipo_documento);
@@ -303,6 +309,7 @@ export default function ComprasIvaPage() {
 
   function handleTipoDocumentoChange(newTipo: string) {
     const isNC = esNotaCredito(newTipo);
+    const isLiq = esLiquidacion(newTipo);
     setFormData((prev) => {
       if (isNC) {
         // Al seleccionar Nota de Crédito, la base va a rebajas_y_devoluciones
@@ -319,8 +326,23 @@ export default function ComprasIvaPage() {
           rebajas_y_devoluciones: baseVal,
           iva_rebajas_y_devoluciones: ivaVal,
         };
+      } else if (isLiq) {
+        const baseVal = Number(prev.gravadas_locales) || Number(prev.rebajas_y_devoluciones) || 0;
+        const antVal =
+          Number(prev.anticipo_a_cuenta) > 0
+            ? Number(prev.anticipo_a_cuenta)
+            : Number((baseVal * 0.02).toFixed(2));
+        return {
+          ...prev,
+          id_tipo_documento: newTipo,
+          gravadas_locales: baseVal,
+          credito_fiscal: 0,
+          anticipo_a_cuenta: antVal,
+          rebajas_y_devoluciones: 0,
+          iva_rebajas_y_devoluciones: 0,
+        };
       } else {
-        // Al cambiar de NC a otro documento, restaurar a gravadas_locales
+        // Al cambiar de NC/Liquidación a otro documento, restaurar a gravadas_locales
         const baseVal = Number(prev.gravadas_locales) || Number(prev.rebajas_y_devoluciones) || 0;
         const ivaVal =
           Number(prev.credito_fiscal) ||
@@ -345,16 +367,27 @@ export default function ComprasIvaPage() {
     }
   }
 
-  // Recalcular crédito fiscal cuando cambian gravadas locales o descuentos
+  // Recalcular crédito fiscal o anticipo a cuenta cuando cambian gravadas locales o descuentos
   function handleValoresChange(gravadas: number, descuento: number) {
     const baseNeta = Math.max(0, gravadas - descuento);
-    const iva = Number((baseNeta * 0.13).toFixed(2));
-    setFormData((prev) => ({
-      ...prev,
-      gravadas_locales: gravadas,
-      rebajas_y_devoluciones: descuento,
-      credito_fiscal: iva,
-    }));
+    setFormData((prev) => {
+      if (esLiquidacion(prev.id_tipo_documento)) {
+        return {
+          ...prev,
+          gravadas_locales: gravadas,
+          rebajas_y_devoluciones: descuento,
+          credito_fiscal: 0,
+          anticipo_a_cuenta: Number((baseNeta * 0.02).toFixed(2)),
+        };
+      }
+      const iva = Number((baseNeta * 0.13).toFixed(2));
+      return {
+        ...prev,
+        gravadas_locales: gravadas,
+        rebajas_y_devoluciones: descuento,
+        credito_fiscal: iva,
+      };
+    });
   }
 
   function calcularBaseNeta(): number {
@@ -533,7 +566,8 @@ export default function ComprasIvaPage() {
           Math.max(0, grav - desc) +
           (Number(row.credito_fiscal) || 0) +
           (Number(row.exentas_locales) || 0) +
-          (Number(row.no_sujetas) || 0) -
+          (Number(row.no_sujetas) || 0) +
+          (Number(row.anticipo_a_cuenta) || 0) -
           (Number(row.iva_retenido) || 0) +
           (Number(row.iva_percibido) || 0);
         return <strong>$ {tot.toFixed(2)}</strong>;
@@ -1227,7 +1261,8 @@ export default function ComprasIvaPage() {
                       Math.max(0, (Number(selectedCompra.gravadas_locales) || 0) - (Number(selectedCompra.rebajas_y_devoluciones) || 0)) +
                       (Number(selectedCompra.credito_fiscal) || 0) +
                       (Number(selectedCompra.exentas_locales) || 0) +
-                      (Number(selectedCompra.no_sujetas) || 0) -
+                      (Number(selectedCompra.no_sujetas) || 0) +
+                      (Number(selectedCompra.anticipo_a_cuenta) || 0) -
                       (Number(selectedCompra.iva_retenido) || 0) +
                       (Number(selectedCompra.iva_percibido) || 0)
                     ).toFixed(2)}`}

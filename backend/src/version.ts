@@ -1,2 +1,2 @@
-export const BACKEND_VERSION = 'v42';
+export const BACKEND_VERSION = 'v43';
 

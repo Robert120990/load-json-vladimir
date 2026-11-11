@@ -1195,54 +1195,127 @@ export async function generarReporteContable(req: Request, res: Response) {
       // -------------------------------------------------------------
       case 'cuadro_ingresos_gastos': {
         titulo = 'CUADRO ANALITICO DE INGRESOS Y GASTOS';
-        periodoTexto = `AL ${lastDayOfMonth} DE ${mesNombre} DE ${ano}`;
+        periodoTexto = `DEL 01 DE ENERO AL ${lastDayOfMonth} DE ${mesNombre} DE ${ano}`;
 
-        const colSaldoAnt = mes === 1 ? 'saldo00' : `saldo${pad2(mes - 1)}`;
-        const colCargo = `cargo${pad2(mes)}`;
-        const colAbono = `abono${pad2(mes)}`;
-        const colSaldoFin = `saldo${pad2(mes)}`;
+        let queryCtas = `
+          SELECT 
+            cod_cta, nom_cta, nivel_cta,
+            cargo01, abono01, saldo01,
+            cargo02, abono02, saldo02,
+            cargo03, abono03, saldo03,
+            cargo04, abono04, saldo04,
+            cargo05, abono05, saldo05,
+            cargo06, abono06, saldo06,
+            cargo07, abono07, saldo07,
+            cargo08, abono08, saldo08,
+            cargo09, abono09, saldo09,
+            cargo10, abono10, saldo10,
+            cargo11, abono11, saldo11,
+            cargo12, abono12, saldo12
+          FROM cuentas_saldos
+          WHERE cod_emp = ? AND ejercicio = ? 
+            AND (cod_cta LIKE '4%' OR cod_cta LIKE '5%')
+            AND CAST(nivel_cta AS SIGNED) <= ?
+        `;
+        const queryParams: any[] = [codEmp, ano, nivelMax];
 
-        const [rows]: any = await pool.query(
-          `SELECT 
-             cod_cta, nom_cta, nivel_cta,
-             ${colSaldoAnt} AS saldo_ant,
-             ${colCargo} AS cargos,
-             ${colAbono} AS abonos,
-             ${colSaldoFin} AS saldo_act
-           FROM cuentas_saldos
-           WHERE cod_emp = ? AND ejercicio = ? 
-             AND (cod_cta LIKE '4%' OR cod_cta LIKE '5%')
-             AND CAST(nivel_cta AS SIGNED) <= ?
-           ORDER BY cod_cta ASC`,
-          [codEmp, ano, nivelMax]
-        );
+        if (paramCuentaDesde && String(paramCuentaDesde).trim()) {
+          queryCtas += ` AND cod_cta >= ?`;
+          queryParams.push(String(paramCuentaDesde).trim());
+        }
+        if (paramCuentaHasta && String(paramCuentaHasta).trim()) {
+          queryCtas += ` AND cod_cta <= ?`;
+          queryParams.push(String(paramCuentaHasta).trim());
+        }
 
-        let totalIngresos = 0;
-        let totalGastos = 0;
+        queryCtas += ` ORDER BY cod_cta ASC`;
 
-        const filas = rows.map((r: any) => {
+        const [rows]: any = await pool.query(queryCtas, queryParams);
+
+        const mappedRows = rows.map((r: any) => {
           const cta = String(r.cod_cta).trim();
-          const saldo = Number(r.saldo_act) || 0;
-          if (cta === '5') totalIngresos = saldo;
-          if (cta === '4') totalGastos = saldo;
+          const esIngreso = cta.startsWith('5');
+          const meses: number[] = [];
+
+          for (let m = 1; m <= 12; m++) {
+            if (m > mes) {
+              meses.push(0);
+              continue;
+            }
+            const c = Number(r[`cargo${pad2(m)}`]) || 0;
+            const a = Number(r[`abono${pad2(m)}`]) || 0;
+            let val = esIngreso ? a - c : c - a;
+
+            // If December includes the year-end closing entry (zeroing out saldo12 against saldo11),
+            // exclude the closing entry so December shows actual operating movements
+            if (m === 12) {
+              const s11 = Number(r.saldo11) || 0;
+              const s12 = Number(r.saldo12) || 0;
+              if (Math.abs(s12) < 0.01 && (Math.abs(s11) > 0.01 || Math.abs(c) > 0.01 || Math.abs(a) > 0.01)) {
+                if (esIngreso && Math.abs(c - (s11 + a)) < 0.05) {
+                  val = a;
+                } else if (!esIngreso && Math.abs(a - (s11 + c)) < 0.05) {
+                  val = c;
+                }
+              }
+            }
+
+            meses.push(Math.round(val * 100) / 100);
+          }
+
+          const acumulado = Math.round(meses.reduce((acc, v) => acc + v, 0) * 100) / 100;
+          const movMesActual = meses[mes - 1] || 0;
+          const saldoAnt = Math.round((acumulado - movMesActual) * 100) / 100;
 
           return {
             cod_cta: cta,
             nom_cta: r.nom_cta,
-            nivel_cta: Number(r.nivel_cta),
-            saldo_ant: Number(r.saldo_ant) || 0,
-            cargos: Number(r.cargos) || 0,
-            abonos: Number(r.abonos) || 0,
-            saldo_act: saldo,
-            esIngreso: cta.startsWith('5'),
+            nivel_cta: Number(r.nivel_cta) || 1,
+            esIngreso,
+            meses,
+            acumulado,
+            // Legacy fields for compatibility
+            saldo_ant: saldoAnt,
+            cargos: Number(r[`cargo${pad2(mes)}`]) || 0,
+            abonos: Number(r[`abono${pad2(mes)}`]) || 0,
+            saldo_act: acumulado,
           };
         });
 
+        const activeRows = mappedRows.filter(
+          (f: any) => Math.abs(f.acumulado) >= 0.005 || f.meses.some((v: number) => Math.abs(v) >= 0.005)
+        );
+
+        const ingresosRows = activeRows.filter((f: any) => f.esIngreso);
+        const gastosRows = activeRows.filter((f: any) => !f.esIngreso);
+
+        const rootIngresos =
+          ingresosRows.find((f: any) => f.cod_cta === '5') ||
+          ingresosRows.find((f: any) => f.nivel_cta === Math.min(...ingresosRows.map((x: any) => x.nivel_cta)));
+        const rootGastos =
+          gastosRows.find((f: any) => f.cod_cta === '4') ||
+          gastosRows.find((f: any) => f.nivel_cta === Math.min(...gastosRows.map((x: any) => x.nivel_cta)));
+
+        const totalesIngresosMeses = rootIngresos ? rootIngresos.meses : Array(12).fill(0);
+        const totalesGastosMeses = rootGastos ? rootGastos.meses : Array(12).fill(0);
+        const resultadoNetoMeses = totalesIngresosMeses.map(
+          (ing: number, idx: number) => Math.round((ing - (totalesGastosMeses[idx] || 0)) * 100) / 100
+        );
+
+        const totalIngresos = rootIngresos ? rootIngresos.acumulado : 0;
+        const totalGastos = rootGastos ? rootGastos.acumulado : 0;
+
         data = {
-          filas,
+          mesCorte: mes,
+          ingresosRows,
+          gastosRows,
+          filas: [...ingresosRows, ...gastosRows],
+          totalesIngresosMeses,
+          totalesGastosMeses,
+          resultadoNetoMeses,
           totalIngresos,
           totalGastos,
-          resultadoNeto: totalIngresos - totalGastos,
+          resultadoNeto: Math.round((totalIngresos - totalGastos) * 100) / 100,
         };
         break;
       }

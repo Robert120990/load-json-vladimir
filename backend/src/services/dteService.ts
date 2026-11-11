@@ -227,12 +227,98 @@ export function extraerDescuentoCompras(dte: DteJson): number {
   return 0;
 }
 
+function buscarNumeroInsensible(objeto: object | null | undefined, ...nombres: string[]): number {
+  if (!objeto || typeof objeto !== 'object') return 0;
+  const mapa = new Map<string, unknown>(
+    Object.entries(objeto).map(([clave, valor]) => [clave.toLowerCase(), valor]),
+  );
+  for (const nombre of nombres) {
+    const valor = mapa.get(nombre.toLowerCase());
+    const num = Number(valor);
+    if (!Number.isNaN(num) && num !== 0) return Number(num.toFixed(2));
+  }
+  return 0;
+}
+
+function obtenerObjetoCuerpoLiquidacion(dte: DteJson): Record<string, unknown> | null {
+  const cuerpo = dte.cuerpoDocumento as unknown;
+  if (!cuerpo) return null;
+  if (Array.isArray(cuerpo)) {
+    return cuerpo.length > 0 && typeof cuerpo[0] === 'object' && cuerpo[0] !== null
+      ? (cuerpo[0] as Record<string, unknown>)
+      : null;
+  }
+  if (typeof cuerpo === 'object') {
+    return cuerpo as Record<string, unknown>;
+  }
+  return null;
+}
+
 /**
- * Extracts Anticipo a Cuenta (2%) for liquidations (Comprobante de Liquidación DTE-08).
- * Checks tributos for specific codes (C3, 22) or description containing ANTICIPO,
- * then checks ivaPerci1 / ivaRete1, and falls back to calculating 2% on totalGravada.
+ * Extracts taxable base (gravadas_locales) for liquidations (DTE-09 Documento Contable de Liquidación
+ * and DTE-08 Comprobante de Liquidación).
+ * In DTE-09 (DTE-DCLE-v1/v2), there is no `resumen` object; values reside inside `cuerpoDocumento`
+ * where `montoSujetoPercepcion` holds the net taxable base without IVA.
+ */
+export function extraerBaseGravadaLiquidacion(dte: DteJson): number {
+  const cuerpoObj = obtenerObjetoCuerpoLiquidacion(dte);
+  const resumenObj = (dte.resumen ?? null) as Record<string, unknown> | null;
+
+  // 1. DTE-09 official net base subject to 2% IVA perception
+  const montoSujeto =
+    buscarNumeroInsensible(cuerpoObj, 'montoSujetoPercepcion', 'totalGravada', 'ventaGravada') ||
+    buscarNumeroInsensible(resumenObj, 'montoSujetoPercepcion', 'totalGravada');
+  if (montoSujeto > 0) {
+    return montoSujeto;
+  }
+
+  // 2. If cuerpoDocumento is an array of items with ventaGravada / valorOperaciones
+  if (Array.isArray(dte.cuerpoDocumento) && dte.cuerpoDocumento.length > 0) {
+    const sumaGravada = dte.cuerpoDocumento.reduce(
+      (acc, item) => acc + (Number(item.montoSujetoPercepcion ?? item.ventaGravada ?? 0) || 0),
+      0,
+    );
+    if (sumaGravada > 0) {
+      return Number(sumaGravada.toFixed(2));
+    }
+  }
+
+  // 3. Fallback if only subTotal / valorOperaciones and IVA are provided in cuerpoDocumento
+  const subTotal = buscarNumeroInsensible(cuerpoObj, 'subTotal', 'valorOperaciones');
+  const ivaCuerpo = buscarNumeroInsensible(cuerpoObj, 'iva', 'IVA');
+  if (subTotal > 0) {
+    if (ivaCuerpo > 0 && subTotal > ivaCuerpo) {
+      return Number((subTotal - ivaCuerpo).toFixed(2));
+    }
+    return subTotal;
+  }
+
+  return 0;
+}
+
+/**
+ * Extracts Anticipo a Cuenta (2%) for liquidations (DTE-08 Comprobante de Liquidación
+ * and DTE-09 Documento Contable de Liquidación).
+ * Checks cuerpoDocumento (IVApercibido / ivaPercibido), resumen (ivaPerci / ivaPerci1),
+ * resumen.tributos (C3, 22, ANTICIPO), and falls back to 2% of the net taxable base.
  */
 export function extraerAnticipoCuenta(dte: DteJson): number {
+  const cuerpoObj = obtenerObjetoCuerpoLiquidacion(dte);
+  const resumenObj = (dte.resumen ?? null) as Record<string, unknown> | null;
+
+  // 1. Check cuerpoDocumento for DTE-09 (IVApercibido in v1, ivaPercibido in v2)
+  const anticipoCuerpo = buscarNumeroInsensible(
+    cuerpoObj,
+    'IVApercibido',
+    'ivaPercibido',
+    'ivaPerci',
+    'ivaPerci1',
+  );
+  if (anticipoCuerpo > 0) {
+    return anticipoCuerpo;
+  }
+
+  // 2. Check resumen.tributos for specific codes (C3, 22) or description containing ANTICIPO / LIQUIDAC
   const tributos = dte.resumen?.tributos ?? [];
   const tributoAnticipo = tributos.find((t) => {
     const cod = String(t.codigo ?? '').trim().toUpperCase();
@@ -241,7 +327,8 @@ export function extraerAnticipoCuenta(dte: DteJson): number {
       cod === 'C3' ||
       cod === '22' ||
       desc.includes('ANTICIPO') ||
-      desc.includes('LIQUIDAC')
+      desc.includes('LIQUIDAC') ||
+      desc.includes('PERCEPC')
     );
   });
 
@@ -249,11 +336,20 @@ export function extraerAnticipoCuenta(dte: DteJson): number {
     return Number((Number(tributoAnticipo.valor) || 0).toFixed(2));
   }
 
-  if ((Number(dte.resumen?.ivaPerci1) || 0) > 0) {
-    return Number((Number(dte.resumen?.ivaPerci1) || 0).toFixed(2));
+  // 3. Check resumen perception fields (ivaPerci in DTE-08, ivaPerci1 in standard DTEs)
+  const anticipoResumen = buscarNumeroInsensible(
+    resumenObj,
+    'ivaPerci',
+    'ivaPerci1',
+    'ivaPercibido',
+    'IVApercibido',
+  );
+  if (anticipoResumen > 0) {
+    return anticipoResumen;
   }
 
-  const baseGravada = Number(dte.resumen?.totalGravada) || 0;
+  // 4. Fallback: 2% of taxable base
+  const baseGravada = extraerBaseGravadaLiquidacion(dte);
   if (baseGravada > 0) {
     return Number((baseGravada * 0.02).toFixed(2));
   }
@@ -274,18 +370,36 @@ function obtenerContraparte(dte: DteJson, tipo: TipoDte) {
 
 export function construirResumen(dte: DteJson, fileName: string, id: number, tipo: TipoDte): DteSummary {
   const contraparte = obtenerContraparte(dte, tipo);
+  const tipoDte = dte.identificacion.tipoDte;
+  let montoTotal =
+    dte.resumen?.montoTotalOperacion ??
+    dte.resumen?.totalPagar ??
+    dte.resumen?.total ??
+    0;
+
+  if (!montoTotal && (tipoDte === '08' || tipoDte === '09')) {
+    const baseLiq = extraerBaseGravadaLiquidacion(dte);
+    const antLiq = extraerAnticipoCuenta(dte);
+    if (baseLiq > 0 || antLiq > 0) {
+      montoTotal = Number((baseLiq + antLiq).toFixed(2));
+    } else {
+      const cuerpoObj = obtenerObjetoCuerpoLiquidacion(dte);
+      montoTotal = buscarNumeroInsensible(cuerpoObj, 'liquidoApagar', 'valorOperaciones', 'subTotal');
+    }
+  }
+
   return {
     id,
     fileName,
     pertenece: true,
-    tipoDte: dte.identificacion.tipoDte,
+    tipoDte,
     fecha: dte.identificacion.fecEmi,
     codigoGeneracion: obtenerCodigoGeneracion(dte),
     numeroControl: obtenerNumeroControl(dte),
     nitContraparte: contraparte?.nit,
     nrcContraparte: contraparte?.nrc ?? undefined,
     nombreContraparte: contraparte?.nombre,
-    montoTotal: dte.resumen?.montoTotalOperacion ?? dte.resumen?.totalPagar ?? 0,
+    montoTotal,
     sinSello: !obtenerSelloRecibido(dte),
   };
 }
@@ -413,11 +527,13 @@ function mapearFila(
     gravadasLocales = 0;
     creditoFiscal = 0;
   } else if (isComprobanteLiquidacion) {
+    const baseLiquidacion = extraerBaseGravadaLiquidacion(dte);
+    if (baseLiquidacion > 0) {
+      gravadasLocales = baseLiquidacion;
+    }
     anticipoCuenta = extraerAnticipoCuenta(dte);
     creditoFiscal = 0;
-    if (ivaPercibido === anticipoCuenta) {
-      ivaPercibido = 0;
-    }
+    ivaPercibido = 0;
   }
 
   return [
@@ -434,9 +550,27 @@ function mapearFila(
 async function existeDuplicado(tipo: TipoDte, codEmp: number, documento: string): Promise<boolean> {
   const docLimpio = (documento ?? '').trim();
   if (!docLimpio) return false;
-  const tabla = tipo === 'ventas' ? VENTAS_TABLA : COMPRAS_TABLA;
+  if (tipo === 'compras') {
+    // Allow re-uploading a purchase DTE if it was previously saved with all 0.00 amounts
+    const [rows] = await pool.query(
+      `SELECT 1 FROM ${COMPRAS_TABLA}
+       WHERE cod_emp = ?
+         AND (documento = ? OR num_control = ?)
+         AND (
+           COALESCE(gravadas_locales, 0) +
+           COALESCE(exentas_locales, 0) +
+           COALESCE(no_sujetas, 0) +
+           COALESCE(credito_fiscal, 0) +
+           COALESCE(anticipo_a_cuenta, 0) +
+           COALESCE(rebajas_y_devoluciones, 0)
+         ) > 0
+       LIMIT 1`,
+      [codEmp, docLimpio, docLimpio],
+    );
+    return (rows as unknown[]).length > 0;
+  }
   const [rows] = await pool.query(
-    `SELECT 1 FROM ${tabla} WHERE cod_emp = ? AND (documento = ? OR num_control = ?) LIMIT 1`,
+    `SELECT 1 FROM ${VENTAS_TABLA} WHERE cod_emp = ? AND (documento = ? OR num_control = ?) LIMIT 1`,
     [codEmp, docLimpio, docLimpio],
   );
   return (rows as unknown[]).length > 0;
@@ -611,6 +745,24 @@ export async function guardarItems(
                 : 'El proveedor no existe en la tabla proveedores',
             );
           }
+        }
+
+        if (tipo === 'compras' && codGen) {
+          // Remove any existing zero-amount placeholder record for this document before inserting
+          await connection.query(
+            `DELETE FROM ${COMPRAS_TABLA}
+             WHERE cod_emp = ?
+               AND (documento = ? OR num_control = ?)
+               AND (
+                 COALESCE(gravadas_locales, 0) +
+                 COALESCE(exentas_locales, 0) +
+                 COALESCE(no_sujetas, 0) +
+                 COALESCE(credito_fiscal, 0) +
+                 COALESCE(anticipo_a_cuenta, 0) +
+                 COALESCE(rebajas_y_devoluciones, 0)
+               ) = 0`,
+            [codEmp, codGen, codGen],
+          );
         }
 
         const llave = await obtenerLlave(codEmp);
